@@ -42,6 +42,54 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(500)
                 self.end_headers()
                 self.wfile.write(f"Error processing PGN: {e}".encode("utf-8"))
+        # --- NEW NOTATION ENDPOINT ---
+        elif self.path == "/moves":
+            if not os.path.exists(PGN_PATH):
+                self.send_response(404)
+                self.end_headers()
+                self.wfile.write(b"No game found.")
+                return
+            
+            try:
+                with open(PGN_PATH, "r") as pgn_file:
+                    game = chess.pgn.read_game(pgn_file)
+                    if game is None:
+                        moves_text = "Waiting for first move..."
+                    else:
+                        # Extract ONLY the moves, stripping out headers like [Site]
+                        exporter = chess.pgn.StringExporter(headers=False, variations=False, comments=False)
+                        moves_text = game.accept(exporter)
+                
+                # Create an auto-refreshing HTML page that auto-scrolls to the newest move
+                html_content = f"""
+                
+                
+                
+                    
+                    
+                
+                
+                    
+{moves_text}
+
+                    
+                
+                
+                """
+                
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                # Force bypass all caches
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                self.end_headers()
+                self.wfile.write(html_content.encode("utf-8"))
+                
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(f"Error: {e}".encode("utf-8"))
+        
+        # --- CATCH ALL ---
         else:
             self.send_response(404)
             self.end_headers()
