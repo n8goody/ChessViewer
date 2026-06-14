@@ -6,7 +6,7 @@ import chess.svg
 import os
 
 PORT = 8080
-PGN_PATH = "/app/data/live.pgn"
+PGN_PATH = "/data/live.pgn"
 
 class ChessHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
