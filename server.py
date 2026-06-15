@@ -10,7 +10,8 @@ PGN_PATH = "/data/live.pgn"
 
 class ChessHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
-        if self.path == "/board.svg":
+        clean_path = self.path.split('?')[0]
+        if clean_path == "/board.svg":
             if not os.path.exists(PGN_PATH):
                 self.send_response(404)
                 self.end_headers()
@@ -42,7 +43,7 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(500)
                 self.end_headers()
                 self.wfile.write(f"Error processing PGN: {e}".encode("utf-8"))
-        elif self.path == "/live-board":
+        elif clean_path == "/live-board":
             html_content = """
             <!DOCTYPE html>
             <html>
@@ -85,7 +86,7 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(html_content.encode("utf-8"))
         # --- NEW NOTATION ENDPOINT ---
-        elif self.path == "/moves":
+        elif clean_path == "/moves":
             if not os.path.exists(PGN_PATH):
                 self.send_response(404)
                 self.end_headers()
