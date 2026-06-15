@@ -42,6 +42,48 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(500)
                 self.end_headers()
                 self.wfile.write(f"Error processing PGN: {e}".encode("utf-8"))
+        elif self.path == "/live-board":
+            html_content = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    /* Centers the board perfectly and matches HA dark mode */
+                    body { 
+                        margin: 0; 
+                        background-color: #1c1c1c; 
+                        display: flex; 
+                        justify-content: center; 
+                        align-items: center; 
+                        height: 100vh; 
+                        overflow: hidden; 
+                    }
+                    svg { max-height: 100%; max-width: 100%; }
+                </style>
+            </head>
+            <body>
+                <div id="board-container"></div>
+                <script>
+                    function fetchBoard() {
+                        // The '?t=' trick forces the browser to ignore its cache and pull a fresh image
+                        fetch('/board.svg?t=' + new Date().getTime())
+                            .then(response => response.text())
+                            .then(svg => { 
+                                document.getElementById('board-container').innerHTML = svg; 
+                            })
+                            .catch(err => console.error("Waiting for board..."));
+                    }
+                    // Fetch a new board every 1000 milliseconds (1 second)
+                    setInterval(fetchBoard, 1000);
+                    fetchBoard(); // Load instantly on page open
+                </script>
+            </body>
+            </html>
+            """
+            self.send_response(200)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
+            self.wfile.write(html_content.encode("utf-8"))
         # --- NEW NOTATION ENDPOINT ---
         elif self.path == "/moves":
             if not os.path.exists(PGN_PATH):
