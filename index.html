@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChessViewer</title>
-    <!-- Google Material Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
         :root {
@@ -86,7 +85,6 @@
         th { background: var(--bg-hover); color: var(--text-dim); position: sticky; top: 0; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; }
         tr:hover td { background: var(--bg-hover); }
         
-        /* Strikethrough style for excluded games */
         tr.excluded-game td { opacity: 0.5; text-decoration: line-through; }
         tr.excluded-game td.action-icons { opacity: 1; text-decoration: none; }
         
@@ -99,21 +97,28 @@
         
         #raw-pgn-textarea { width: 100%; height: 100%; background: var(--bg-hover); color: var(--text-main); font-family: monospace; border: none; padding: 15px; box-sizing: border-box; resize: none; border-radius: 8px; }
 
-        /* TV MODES */
-        body.tv-mode #tv-leaderboard { display: flex; }
+        /* TV MODES (Rescaled to Prioritize Board Size) */
+        body.tv-mode #tv-leaderboard { display: flex; width: 280px; }
+        body.tv-mode #tv-leader-content table { font-size: 0.85rem; }
+        body.tv-mode #tv-leader-content th, body.tv-mode #tv-leader-content td { padding: 8px 10px; }
+        
         body.tv-mode .controls-bar { display: none !important; }
         body.tv-mode #engine-readout { display: none !important; }
         body.tv-mode .on-screen-controls { display: none !important; }
-        body.tv-mode #board-container { max-height: 90vh; max-width: 90vh; }
-        body.tv-mode .material-badge { max-width: 90vh; font-size: 1.5rem; }
+        
+        body.tv-mode #sidebar { width: 280px; }
+        body.tv-mode #moves-container { font-size: 0.95rem; line-height: 1.8; padding: 10px; }
+        
+        body.tv-mode .board-area { padding: 1vmin; }
+        body.tv-mode #board-container { max-height: 100%; max-width: 100%; }
+        body.tv-mode .material-badge { max-width: 100%; font-size: 1.1rem; padding: 4px 8px; margin: 2px 0; }
 
         body.tv-board-mode #tv-leaderboard { display: none !important; }
         body.tv-board-mode #sidebar { display: none !important; }
         body.tv-board-mode .on-screen-controls { display: none !important; }
-        body.tv-board-mode #board-container { max-height: 95vh; max-width: 95vw; }
-        body.tv-board-mode .material-badge { max-width: 95vw; font-size: 1.5rem; }
+        body.tv-board-mode #board-container { max-height: 98vh; max-width: 98vw; }
+        body.tv-board-mode .material-badge { max-width: 98vw; font-size: 1.5rem; }
 
-        /* MOBILE FIX: Display: Contents unboxes the sidebar so flex-order can map elements properly */
         @media (max-width: 768px) {
             body { flex-direction: column; overflow: auto; }
             #app-view { flex-direction: column; display: flex !important; }
@@ -131,7 +136,6 @@
 </head>
 <body>
 
-    <!-- HOME PAGE -->
     <div id="home-view">
         <span class="material-symbols-outlined" style="font-size: 5rem; color: var(--primary);">chess</span>
         <h1 style="margin-top: 10px; letter-spacing: 2px;">CHESSVIEWER</h1>
@@ -163,7 +167,6 @@
         </div>
     </div>
 
-    <!-- LEADERBOARD PAGE -->
     <div id="leaderboard-view">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h1 style="margin:0;"><span class="material-symbols-outlined" style="font-size:2.5rem; color:var(--primary); vertical-align:middle;">social_leaderboard</span> Analytics Hub</h1>
@@ -176,11 +179,9 @@
         </div>
         
         <div id="leaderboard-body-content" style="background:var(--bg-card); border-radius:var(--radius); padding:20px; flex:1;">
-            <!-- Rendered via JS -->
-        </div>
+            </div>
     </div>
 
-    <!-- MAIN APP VIEW -->
     <div id="app-view">
         <div id="tv-leaderboard">
             <h3 style="text-align:center; padding: 15px; margin:0; background:var(--bg-base); border-bottom: 1px solid var(--border);">
@@ -205,7 +206,6 @@
         
         <div id="sidebar">
             <div class="controls-bar">
-                <!-- Nav Button Group -->
                 <div style="display:flex; gap:10px;">
                     <button class="btn-primary icon-btn" style="flex:1; position:relative;" onclick="openManager(false)">
                         <span class="material-symbols-outlined">inventory_2</span> Manager
@@ -243,7 +243,6 @@
         </div>
     </div>
 
-    <!-- Manager Archive Modal -->
     <div id="modal-overlay" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -254,7 +253,6 @@
         </div>
     </div>
 
-    <!-- Metadata Editor Modal -->
     <div id="edit-meta-overlay" class="modal-overlay" style="z-index: 200;">
         <div class="mini-modal">
             <h3 style="margin-top:0; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Update Game Data</h3>
@@ -302,7 +300,6 @@
         </div>
     </div>
     
-    <!-- Raw PGN Editor Modal -->
     <div id="raw-editor-overlay" class="modal-overlay" style="z-index: 200;">
         <div class="modal-content" style="max-width: 700px; height: 65vh;">
             <div class="modal-header">
@@ -344,7 +341,6 @@
         let isFlipped = false, currentBestMove = null, evalCache = {};
         window.allGames = [];
 
-        // App Mode Setup
         if (!IS_HOME && !IS_LEADERBOARD) {
             let toggleBtn = document.getElementById('mode-toggle-btn');
             toggleBtn.innerHTML = IS_ANALYSIS ? '<span class="material-symbols-outlined">sensors</span> Live' : '<span class="material-symbols-outlined">troubleshoot</span> Analyze';
@@ -528,7 +524,6 @@
             });
         }
 
-        // --- Manager UI ---
         function openManager(fromHome=false) { 
             if(fromHome && document.getElementById('home-view')) document.getElementById('home-view').style.display = 'none';
             document.getElementById('modal-overlay').style.display = 'flex'; 
@@ -550,7 +545,7 @@
         function renderGamesList() {
             let html = `<table><tr><th>Played</th><th>File</th><th>Players (W vs B)</th><th>Moves</th><th>Result</th><th>Notes</th><th>Actions</th></tr>`;
             window.allGames.forEach(g => {
-                if (g.filename === 'live.pgn') return; // Hide live.pgn
+                if (g.filename === 'live.pgn') return;
                 
                 let fav = g.is_favorite ? '<span class="material-symbols-outlined filled-icon" style="color:var(--warning)">star</span>' : '<span class="material-symbols-outlined">star</span>';
                 let notes = '';
@@ -580,7 +575,6 @@
             document.getElementById('modal-body-content').innerHTML = html + "</table>";
         }
 
-        // --- Leaderboard Page Logic ---
         function switchLeaderTab(tab) {
             ['leader', 'matrix'].forEach(t => document.getElementById(`tab-${t}`).classList.remove('active'));
             document.getElementById(`tab-${tab}`).classList.add('active');
@@ -667,7 +661,6 @@
             document.getElementById('matrix-table-container').innerHTML = html + `</table></div>`;
         }
 
-        // --- Editors ---
         function openCurrentGameEdit() { openMetaEdit(currentGameFile); }
         
         function openMetaEdit(filename) {
@@ -730,7 +723,6 @@
                 .then(() => { closeRawEditor(); loadGame(currentGameFile); }); 
         }
 
-        // Action API with Optimistic UI updates
         function apiAction(action, filename) {
             if (action === 'delete' && !confirm(`Permanently delete ${filename}?`)) return;
             
