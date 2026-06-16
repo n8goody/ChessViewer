@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Homelab Chess</title>
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
-        /* Home Assistant Dark Mode Palette */
         :root {
             --bg-base: #111111;
             --bg-card: #1c1c1c;
@@ -18,23 +19,34 @@
             --danger: #f44336;
             --danger-hover: #d32f2f;
             --success: #4caf50;
+            --warning: #ffeb3b;
             --radius: 12px;
         }
 
         body { margin: 0; background: var(--bg-base); color: var(--text-main); font-family: 'Roboto', 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
         
+        .material-symbols-outlined { vertical-align: middle; font-size: 1.2rem; }
+        
+        /* App Layouts */
+        #home-view { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
+        #app-view { display: none; width: 100%; height: 100%; flex-direction: row; }
+        
+        .home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
+        .home-card { background: var(--bg-card); padding: 30px; border-radius: var(--radius); border: 1px solid var(--border); text-align: center; cursor: pointer; transition: all 0.2s; }
+        .home-card:hover { border-color: var(--primary); transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .home-card .material-symbols-outlined { font-size: 3rem; color: var(--primary); margin-bottom: 10px; }
+
         .board-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2vmin; position: relative; }
-        .material-badge { background: var(--bg-card); color: var(--text-main); padding: 6px 12px; border-radius: var(--radius); font-weight: bold; margin: 5px 0; font-size: 1.1rem; display: flex; justify-content: center; width: 100%; max-width: 80vh; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .mat-white { color: #f0d9b5; } .mat-black { color: #aaaaaa; }
+        .material-badge { background: var(--bg-card); color: var(--text-main); padding: 6px 12px; border-radius: var(--radius); font-weight: bold; margin: 5px 0; font-size: 1.1rem; display: flex; justify-content: center; width: 100%; max-width: 80vh; border: 1px solid var(--border); transition: color 0.3s; }
         
         #board-container { width: 100%; height: 100%; max-height: 75vh; max-width: 75vh; display:flex; justify-content:center; }
         #board-container svg { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0px 10px 30px rgba(0,0,0,0.8)); }
         
         .on-screen-controls { display: flex; gap: 10px; margin-top: 10px; width: 100%; max-width: 80vh; justify-content: center; }
-        .on-screen-controls button { font-size: 1.5rem; padding: 10px 30px; background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); }
-        .on-screen-controls button:hover { background: var(--bg-hover); }
-
+        .on-screen-controls button { padding: 8px 30px; background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); }
+        
         /* Sidebar Styling */
+        #tv-leaderboard { display: none; width: 320px; background: var(--bg-card); border-right: 1px solid var(--border); flex-direction: column; }
         #sidebar { width: 380px; background: var(--bg-card); display: flex; flex-direction: column; border-left: 1px solid var(--border); z-index: 10; box-shadow: -5px 0 15px rgba(0,0,0,0.5); }
         .controls-bar { padding: 20px; background: var(--bg-base); display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid var(--border); position: relative; }
         
@@ -44,6 +56,7 @@
         .btn-primary { background: var(--primary); border: none; font-weight: bold; } .btn-primary:hover { background: var(--primary-hover); }
         .btn-danger { background: var(--danger); border: none; } .btn-danger:hover { background: var(--danger-hover); }
         .btn-outline { background: transparent; border: 1px solid var(--border); } .btn-outline:hover { background: var(--bg-hover); }
+        .icon-btn { display: flex; align-items: center; justify-content: center; gap: 5px; }
         
         .notification-dot { position: absolute; top: 10px; right: 15px; background: var(--danger); color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.8rem; font-weight: bold; display: none; box-shadow: 0 0 10px rgba(244, 67, 54, 0.5); }
 
@@ -56,8 +69,8 @@
 
         /* Modals */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(5px); }
-        .modal-content { background: var(--bg-base); width: 95%; max-width: 1000px; height: 85vh; border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
-        .mini-modal { width: 400px; padding: 25px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); box-shadow: 0 15px 35px rgba(0,0,0,0.8); }
+        .modal-content { background: var(--bg-base); width: 95%; max-width: 1200px; height: 85vh; border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+        .mini-modal { width: 450px; padding: 25px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); box-shadow: 0 15px 35px rgba(0,0,0,0.8); }
         
         .modal-header { padding: 15px 20px; background: var(--bg-card); display: flex; gap: 10px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
         .tabs button { flex: 1; border-radius: 8px; background: transparent; border: none; color: var(--text-dim); font-weight: bold; padding: 10px; } 
@@ -66,87 +79,117 @@
         
         table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: var(--radius); overflow: hidden; }
         th, td { padding: 14px; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background: var(--bg-hover); color: var(--text-dim); position: sticky; top: 0; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px;}
+        th { background: var(--bg-hover); color: var(--text-dim); position: sticky; top: 0; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; }
         tr:hover td { background: var(--bg-hover); }
-        .action-icons span { cursor: pointer; margin-right: 12px; font-size: 1.2rem; transition: transform 0.1s; display: inline-block; }
-        .action-icons span:hover { transform: scale(1.2); }
+        .action-icons span { cursor: pointer; margin-right: 12px; transition: color 0.2s; }
+        .action-icons span:hover { color: var(--primary); }
 
         #eval-container { width: 30px; background: var(--bg-card); display: none; flex-direction: column; justify-content: flex-end; margin: 2vmin 0 2vmin 2vmin; border-radius: 8px; overflow: hidden; position: relative; border: 1px solid var(--border); }
         #eval-fill { width: 100%; background: #f0d9b5; height: 50%; transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
         #engine-readout { display: none; padding: 15px; background: rgba(3, 169, 244, 0.1); border-bottom: 1px solid var(--border); }
-        .best-move { color: var(--primary); font-weight: bold; font-size: 1.2rem; }
         
-        #raw-pgn-textarea { width: 100%; height: 100%; background: var(--bg-hover); color: var(--text-main); font-family: monospace; border: none; padding: 15px; box-sizing: border-box; resize: none; border-radius: 8px; }
-
         /* TV MODE */
-        body.tv-mode #sidebar { display: none !important; }
-        body.tv-mode .on-screen-controls { display: none !important; }
+        body.tv-mode #tv-leaderboard { display: flex; }
+        body.tv-mode .controls-bar { display: none; }
+        body.tv-mode .on-screen-controls { display: none; }
         body.tv-mode #board-container { max-height: 90vh; max-width: 90vh; }
-        body.tv-mode .material-badge { max-width: 90vh; font-size: 1.5rem; padding: 10px; }
-
-        @media (max-width: 768px) {
-            body { flex-direction: column; overflow: auto; }
-            #eval-container { display: none !important; }
-            #sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border); }
-            #moves-container { max-height: 40vh; }
-        }
+        body.tv-mode .material-badge { max-width: 90vh; font-size: 1.5rem; }
     </style>
 </head>
 <body>
-    <div id="eval-container"><div id="eval-fill"></div></div>
 
-    <div class="board-area">
-        <div id="mat-top" class="material-badge"></div>
-        <div id="board-container"></div>
-        <div class="on-screen-controls">
-            <button onclick="controlArrow('left')">⬅️</button>
-            <button onclick="controlArrow('right')">➡️</button>
+    <!-- HOME PAGE VIEW -->
+    <div id="home-view">
+        <span class="material-symbols-outlined" style="font-size: 5rem; color: var(--primary);">chess</span>
+        <h1 style="margin-top: 10px; letter-spacing: 2px;">HOMELAB CHESS</h1>
+        <div class="home-grid">
+            <div class="home-card" onclick="window.location.href='/live'">
+                <span class="material-symbols-outlined">sensors</span>
+                <h3>Live Stream</h3>
+            </div>
+            <div class="home-card" onclick="window.location.href='/analysis'">
+                <span class="material-symbols-outlined">troubleshoot</span>
+                <h3>Analysis Engine</h3>
+            </div>
+            <div class="home-card" onclick="window.location.href='/tv'">
+                <span class="material-symbols-outlined">tv</span>
+                <h3>TV Mode</h3>
+            </div>
+            <div class="home-card" onclick="openManager(true)">
+                <span class="material-symbols-outlined">database</span>
+                <h3>Game Manager</h3>
+            </div>
         </div>
-        <div id="mat-bot" class="material-badge"></div>
     </div>
-    
-    <div id="sidebar">
-        <div class="controls-bar">
-            <button class="btn-primary" onclick="openManager()">🏆 Game Manager</button>
-            <div id="review-dot" class="notification-dot">!</div>
-            
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 5px; gap: 10px;">
-                <div style="flex:1; overflow:hidden;">
-                    <div id="current-game-label" style="color:var(--text-dim); font-size:0.8rem; text-overflow:ellipsis; white-space:nowrap;"></div>
+
+    <!-- MAIN APP VIEW -->
+    <div id="app-view">
+        
+        <div id="tv-leaderboard">
+            <h3 style="text-align:center; padding: 15px; margin:0; background:var(--bg-base); border-bottom: 1px solid var(--border);">
+                <span class="material-symbols-outlined">social_leaderboard</span> Weekly Leaders
+            </h3>
+            <div id="tv-leader-content" style="padding: 10px; overflow-y:auto;"></div>
+        </div>
+
+        <div id="eval-container"><div id="eval-fill"></div></div>
+
+        <div class="board-area">
+            <div id="mat-top" class="material-badge"></div>
+            <div id="board-container"></div>
+            <div class="on-screen-controls">
+                <button onclick="controlArrow('left')"><span class="material-symbols-outlined">chevron_left</span></button>
+                <button onclick="window.location.href='/'"><span class="material-symbols-outlined">home</span></button>
+                <button onclick="controlArrow('right')"><span class="material-symbols-outlined">chevron_right</span></button>
+            </div>
+            <div id="mat-bot" class="material-badge"></div>
+        </div>
+        
+        <div id="sidebar">
+            <div class="controls-bar">
+                <button class="btn-primary icon-btn" onclick="openManager(false)"><span class="material-symbols-outlined">emoji_events</span> Game Manager</button>
+                <div id="review-dot" class="notification-dot">!</div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 5px; gap: 10px;">
+                    <div style="flex:1; overflow:hidden;">
+                        <div id="current-game-label" style="color:var(--text-dim); font-size:0.8rem; text-overflow:ellipsis; white-space:nowrap;"></div>
+                    </div>
+                    <button class="btn-outline icon-btn" onclick="openCurrentGameEdit()" title="Edit Metadata"><span class="material-symbols-outlined">edit</span></button>
+                    <button class="btn-outline icon-btn" onclick="toggleFlip()" title="Flip Board"><span class="material-symbols-outlined">sync</span></button>
                 </div>
-                <button class="btn-outline" onclick="openCurrentGameEdit()" title="Edit Metadata">✏️</button>
-                <button class="btn-outline" onclick="toggleFlip()" title="Flip Board">🔃</button>
+                
+                <div style="display:flex; gap: 8px;">
+                    <button id="mode-toggle-btn" class="btn-outline icon-btn" style="flex:1;"></button>
+                    <button id="edit-raw-btn" class="btn-outline icon-btn" style="flex:1;" onclick="openRawEditor()"><span class="material-symbols-outlined">code</span> Raw</button>
+                </div>
+                <button id="deep-analyze-btn" class="icon-btn" style="display:none; background:var(--success); color:white;" onclick="runFullAnalysis()"><span class="material-symbols-outlined">search</span> Analyze Blunders</button>
             </div>
-            
-            <div style="display:flex; gap: 8px;">
-                <button id="mode-toggle-btn" class="btn-outline" style="flex:1;"></button>
-                <button id="edit-raw-btn" class="btn-outline" style="flex:1;" onclick="openRawEditor()">Raw PGN</button>
+
+            <div id="engine-readout">
+                <div>Eval: <span id="engine-eval" style="font-weight:bold;">--</span></div>
+                <div>Best: <span id="engine-best" style="color:var(--primary); font-weight:bold; font-size: 1.2rem;">--</span></div>
             </div>
-            <button id="deep-analyze-btn" style="display:none; background:var(--success); color:white;" onclick="runFullAnalysis()">🔍 Analyze Blunders</button>
-        </div>
 
-        <div id="engine-readout">
-            <div>Eval: <span id="engine-eval" style="font-weight:bold;">--</span></div>
-            <div>Best: <span id="engine-best" class="best-move">--</span></div>
+            <div id="moves-container">Loading...</div>
         </div>
-
-        <div id="moves-container">Loading...</div>
     </div>
 
+    <!-- Manager Modal -->
     <div id="modal-overlay" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
                 <div class="tabs" style="display:flex; gap:5px; flex:1;">
-                    <button id="tab-games" class="active" onclick="switchTab('games')">📚 Archive</button>
-                    <button id="tab-leader" onclick="switchTab('leader')">🏅 Leaderboard</button>
-                    <button id="tab-matrix" onclick="switchTab('matrix')">🧮 Head-to-Head</button>
+                    <button id="tab-games" class="active" onclick="switchTab('games')"><span class="material-symbols-outlined">inventory_2</span> Archive</button>
+                    <button id="tab-leader" onclick="switchTab('leader')"><span class="material-symbols-outlined">leaderboard</span> Leaderboard</button>
+                    <button id="tab-matrix" onclick="switchTab('matrix')"><span class="material-symbols-outlined">grid_on</span> Head-to-Head</button>
                 </div>
-                <button class="btn-outline" onclick="closeManager()" style="flex:0;">Close</button>
+                <button class="btn-outline icon-btn" onclick="closeManager()" style="flex:0;"><span class="material-symbols-outlined">close</span></button>
             </div>
             <div class="modal-body" id="modal-body-content"></div>
         </div>
     </div>
 
+    <!-- Comprehensive Metadata Editor -->
     <div id="edit-meta-overlay" class="modal-overlay" style="z-index: 200;">
         <div class="mini-modal">
             <h3 style="margin-top:0; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Update Game Data</h3>
@@ -165,14 +208,20 @@
                     <input id="edit-b-input" list="known-players" style="width:100%; box-sizing:border-box; margin-top:5px;">
                 </div>
             </div>
-            <div style="margin-bottom: 15px;">
-                <label style="font-size: 0.85rem; color: var(--text-dim);">Result:</label>
-                <select id="edit-res-input" style="width:100%; box-sizing:border-box; margin-top:5px;">
-                    <option value="*">Ongoing (*)</option>
-                    <option value="1-0">White Wins (1-0)</option>
-                    <option value="0-1">Black Wins (0-1)</option>
-                    <option value="1/2-1/2">Draw (1/2-1/2)</option>
-                </select>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                    <label style="font-size: 0.85rem; color: var(--text-dim);">Date Played:</label>
+                    <input type="datetime-local" id="edit-date-input" step="1" style="width:100%; box-sizing:border-box; margin-top:5px;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 0.85rem; color: var(--text-dim);">Result:</label>
+                    <select id="edit-res-input" style="width:100%; box-sizing:border-box; margin-top:5px;">
+                        <option value="*">Ongoing (*)</option>
+                        <option value="1-0">White Wins (1-0)</option>
+                        <option value="0-1">Black Wins (0-1)</option>
+                        <option value="1/2-1/2">Draw (1/2-1/2)</option>
+                    </select>
+                </div>
             </div>
             <div style="margin-bottom: 25px; display: flex; align-items: center; gap: 10px;">
                 <input type="checkbox" id="edit-exclude-input" style="width: 18px; height: 18px; cursor: pointer;">
@@ -180,21 +229,22 @@
             </div>
 
             <div style="display:flex; gap:10px;">
-                <button class="btn-primary" style="flex:1;" onclick="submitMetaEdit()">Save Changes</button>
-                <button class="btn-outline" style="flex:1;" onclick="closeMetaEdit()">Cancel</button>
+                <button class="btn-primary icon-btn" style="flex:1;" onclick="submitMetaEdit()"><span class="material-symbols-outlined">save</span> Save</button>
+                <button class="btn-outline icon-btn" style="flex:1;" onclick="closeMetaEdit()"><span class="material-symbols-outlined">cancel</span> Cancel</button>
             </div>
             <input type="hidden" id="edit-target-file">
             <datalist id="known-players"></datalist>
         </div>
     </div>
     
+    <!-- Raw PGN Editor -->
     <div id="raw-editor-overlay" class="modal-overlay" style="z-index: 200;">
         <div class="modal-content" style="max-width: 700px; height: 65vh;">
             <div class="modal-header">
                 <h3 style="margin:0;">Raw PGN Editor</h3>
                 <div style="display:flex; gap: 10px;">
-                    <button class="btn-primary" onclick="saveRawPGN()">Save Source</button>
-                    <button class="btn-outline" onclick="closeRawEditor()">Cancel</button>
+                    <button class="btn-primary icon-btn" onclick="saveRawPGN()"><span class="material-symbols-outlined">save</span> Save Source</button>
+                    <button class="btn-danger icon-btn" onclick="closeRawEditor()"><span class="material-symbols-outlined">cancel</span></button>
                 </div>
             </div>
             <div style="flex:1; padding: 15px;">
@@ -205,10 +255,17 @@
 
     <script>
         const PATH = window.location.pathname;
+        const IS_HOME = PATH === '/';
+        const IS_LIVE = PATH === '/live';
         const IS_ANALYSIS = PATH === '/analysis';
         const IS_TV = PATH === '/tv';
         
-        if (IS_TV) document.body.classList.add('tv-mode');
+        if (IS_HOME) {
+            document.getElementById('home-view').style.display = 'flex';
+        } else {
+            document.getElementById('app-view').style.display = 'flex';
+            if (IS_TV) document.body.classList.add('tv-mode');
+        }
         
         const urlParams = new URLSearchParams(window.location.search);
         let currentGameFile = urlParams.get('file') || 'live.pgn';
@@ -217,16 +274,19 @@
         let isFlipped = false, currentBestMove = null, evalCache = {};
         window.allGames = [];
 
-        // UI Initialization
-        document.getElementById('mode-toggle-btn').innerText = IS_ANALYSIS ? 'Live View' : 'Analyze Engine';
-        document.getElementById('mode-toggle-btn').onclick = () => window.location.href = IS_ANALYSIS ? `/?file=${currentGameFile}` : `/analysis?file=${currentGameFile}`;
-        document.getElementById('current-game-label').innerText = `Viewing: ${currentGameFile}`;
-        document.getElementById('edit-raw-btn').style.display = (currentGameFile === 'live.pgn') ? 'none' : 'block';
-        
-        if (IS_ANALYSIS && !IS_TV) {
-            document.getElementById('eval-container').style.display = 'flex';
-            document.getElementById('engine-readout').style.display = 'block';
-            document.getElementById('deep-analyze-btn').style.display = 'block';
+        // App Mode Setup
+        if (!IS_HOME) {
+            let toggleBtn = document.getElementById('mode-toggle-btn');
+            toggleBtn.innerHTML = IS_ANALYSIS ? '<span class="material-symbols-outlined">sensors</span> Live' : '<span class="material-symbols-outlined">troubleshoot</span> Analyze';
+            toggleBtn.onclick = () => window.location.href = IS_ANALYSIS ? `/live?file=${currentGameFile}` : `/analysis?file=${currentGameFile}`;
+            document.getElementById('current-game-label').innerText = `Viewing: ${currentGameFile}`;
+            document.getElementById('edit-raw-btn').style.display = (currentGameFile === 'live.pgn') ? 'none' : 'flex';
+            
+            if (IS_ANALYSIS && !IS_TV) {
+                document.getElementById('eval-container').style.display = 'flex';
+                document.getElementById('engine-readout').style.display = 'block';
+                document.getElementById('deep-analyze-btn').style.display = 'flex';
+            }
         }
 
         function toggleFlip() { isFlipped = !isFlipped; updateBoard(); renderMaterial(); }
@@ -238,10 +298,10 @@
 
         function loadGame(filename) {
             currentGameFile = filename;
-            if (!IS_TV) history.pushState(null, '', `?file=${filename}`); 
+            if (!IS_TV && !IS_HOME) history.pushState(null, '', `?file=${filename}`); 
             
             document.getElementById('current-game-label').innerText = `Viewing: ${filename}`;
-            document.getElementById('edit-raw-btn').style.display = (filename === 'live.pgn') ? 'none' : 'block';
+            document.getElementById('edit-raw-btn').style.display = (filename === 'live.pgn') ? 'none' : 'flex';
             totalPlies = 0; currentViewPly = -1; currentBestMove = null; evalCache = {};
             closeManager(); updateBoard(); fetchState();
         }
@@ -256,32 +316,47 @@
         }
 
         function updateBoard() {
+            if (IS_HOME) return;
             const target = (currentViewPly === -1) ? '' : `&ply=${currentViewPly}`;
             const bm = (IS_ANALYSIS && currentBestMove) ? `&bestmove=${encodeURIComponent(currentBestMove)}` : '';
             fetch(`/board.svg?file=${currentGameFile}${target}&flipped=${isFlipped}${bm}&t=${Date.now()}`)
                 .then(r => r.text()).then(svg => document.getElementById('board-container').innerHTML = svg);
         }
 
+        // Feature: Colorize Differential
+        function getDiffColor(absDiff) {
+            if (absDiff === 0) return 'var(--text-dim)';
+            if (absDiff <= 2) return 'var(--danger)';
+            if (absDiff <= 4) return 'var(--warning)';
+            return 'var(--success)';
+        }
+
         function renderMaterial() {
-            if (lastMovesData.length === 0) return;
+            if (lastMovesData.length === 0 || IS_HOME) return;
             let activePly = (currentViewPly === -1) ? totalPlies : currentViewPly;
             let moveObj = lastMovesData.find(m => m.ply === activePly) || lastMovesData[lastMovesData.length-1];
             
             let diff = moveObj.material;
-            let wText = diff > 0 ? `+${diff}` : ''; let bText = diff < 0 ? `+${Math.abs(diff)}` : '';
+            let absDiff = Math.abs(diff);
+            let color = getDiffColor(absDiff);
+            
+            let wText = diff > 0 ? `+${diff}` : ''; 
+            let bText = diff < 0 ? `+${absDiff}` : '';
+            
             const top = document.getElementById('mat-top'), bot = document.getElementById('mat-bot');
+            top.style.color = 'var(--text-main)'; bot.style.color = 'var(--text-main)'; // reset
 
             if (isFlipped) {
-                top.innerText = wText; top.className = "material-badge mat-white";
-                bot.innerText = bText; bot.className = "material-badge mat-black";
+                top.innerText = wText; top.className = "material-badge"; if(diff > 0) top.style.color = color;
+                bot.innerText = bText; bot.className = "material-badge"; if(diff < 0) bot.style.color = color;
             } else {
-                top.innerText = bText; top.className = "material-badge mat-black";
-                bot.innerText = wText; bot.className = "material-badge mat-white";
+                top.innerText = bText; top.className = "material-badge"; if(diff < 0) top.style.color = color;
+                bot.innerText = wText; bot.className = "material-badge"; if(diff > 0) bot.style.color = color;
             }
         }
 
         function renderMovesList() {
-            if (lastMovesData.length === 0 || IS_TV) return;
+            if (lastMovesData.length === 0 || IS_HOME) return;
             let html = '', activePly = (currentViewPly === -1) ? totalPlies : currentViewPly;
             for(let i = 1; i < lastMovesData.length; i += 2) {
                 let turn = Math.floor(i / 2) + 1, white = lastMovesData[i], black = lastMovesData[i+1];
@@ -324,11 +399,12 @@
 
         async function runFullAnalysis() {
             let btn = document.getElementById('deep-analyze-btn');
-            btn.innerText = "Analyzing..."; btn.style.background = "var(--danger)";
+            btn.innerHTML = `<span class="material-symbols-outlined">sync</span> Analyzing...`; 
+            btn.style.background = "var(--danger)";
             for (let i = 1; i < lastMovesData.length; i++) {
                 let move = lastMovesData[i];
                 if (!evalCache[move.ply]) {
-                    btn.innerText = `Analyzing ${move.ply}/${totalPlies}`;
+                    btn.innerHTML = `<span class="material-symbols-outlined">sync</span> ${move.ply}/${totalPlies}`;
                     await analyzePosition(move.fen, move.ply);
                 }
                 let prevScore = evalCache[move.ply - 1]?.score || 0;
@@ -337,40 +413,48 @@
                 if (move.ply % 2 !== 0 && shift < -2.0) evalCache[move.ply].isBlunder = true; 
                 if (move.ply % 2 === 0 && shift > 2.0) evalCache[move.ply].isBlunder = true;  
             }
-            btn.innerText = "Analysis Complete"; btn.style.background = "var(--bg-hover)";
+            btn.innerHTML = `<span class="material-symbols-outlined">search</span> Analysis Complete`; 
+            btn.style.background = "var(--bg-hover)";
             renderMovesList(); 
         }
 
         function fetchState() {
-            fetch(`/game-data?file=${currentGameFile}&t=${Date.now()}`)
-                .then(r => r.json()).then(data => {
-                    if (!data || data.total_plies === undefined) return;
-                    if (data.total_plies !== totalPlies) {
-                        totalPlies = data.total_plies; lastMovesData = data.moves;
-                        if (currentViewPly === -1) {
-                            currentBestMove = null;
-                            updateBoard(); renderMovesList(); renderMaterial();
-                            if(!IS_TV) {
-                                const c = document.getElementById('moves-container'); c.scrollTop = c.scrollHeight;
-                                if (IS_ANALYSIS && lastMovesData.length > 0) analyzePosition(lastMovesData[lastMovesData.length - 1].fen, lastMovesData[lastMovesData.length - 1].ply);
-                            }
-                        } else renderMovesList();
-                    }
-                }).catch(()=>{});
+            if (!IS_HOME) {
+                fetch(`/game-data?file=${currentGameFile}&t=${Date.now()}`)
+                    .then(r => r.json()).then(data => {
+                        if (!data || data.total_plies === undefined) return;
+                        if (data.total_plies !== totalPlies) {
+                            totalPlies = data.total_plies; lastMovesData = data.moves;
+                            if (currentViewPly === -1) {
+                                currentBestMove = null;
+                                updateBoard(); renderMovesList(); renderMaterial();
+                                if(!IS_TV) {
+                                    const c = document.getElementById('moves-container'); c.scrollTop = c.scrollHeight;
+                                    if (IS_ANALYSIS && lastMovesData.length > 0) analyzePosition(lastMovesData[lastMovesData.length - 1].fen, lastMovesData[lastMovesData.length - 1].ply);
+                                }
+                            } else renderMovesList();
+                        }
+                    }).catch(()=>{});
+            }
                 
-            if(!IS_TV) {
-                fetch('/api/games').then(r=>r.json()).then(games => {
-                    window.allGames = games;
+            fetch('/api/games').then(r=>r.json()).then(games => {
+                window.allGames = games;
+                if (!IS_TV && !IS_HOME) {
                     let needsReview = games.filter(g => g.needs_review).length;
                     let dot = document.getElementById('review-dot');
                     if (needsReview > 0) { dot.style.display = 'block'; dot.innerText = needsReview; } 
                     else { dot.style.display = 'none'; }
-                });
-            }
+                }
+                if (IS_TV) {
+                    // Update TV Leaderboard side panel
+                    let html = buildLeaderboardTable(7);
+                    document.getElementById('tv-leader-content').innerHTML = html;
+                }
+            });
         }
 
         // --- Manager UI ---
-        function openManager() { 
+        function openManager(fromHome=false) { 
             document.getElementById('modal-overlay').style.display = 'flex'; 
             updateDatalist(); switchTab('games');
         }
@@ -389,18 +473,18 @@
             const body = document.getElementById('modal-body-content'); body.innerHTML = "<h2>Loading...</h2>";
             
             if (tab === 'games') {
-                let html = `<table><tr><th>Date</th><th>File</th><th>Players (W vs B)</th><th>Moves</th><th>Result</th><th>Notes</th><th>Actions</th></tr>`;
+                let html = `<table><tr><th>Played</th><th>File</th><th>Players (W vs B)</th><th>Moves</th><th>Result</th><th>Notes</th><th>Actions</th></tr>`;
                 window.allGames.forEach(g => {
-                    let fav = g.is_favorite ? '⭐' : '☆', notes = '';
-                    if (g.is_checkmate) notes += '<span style="color:var(--success)" title="Checkmate">#️⃣</span> ';
-                    if (g.needs_review) notes += '<span style="color:var(--danger); font-weight:bold;">Review Needed!</span> ';
-                    if (g.exclude_stats) notes += '<span style="color:var(--text-dim);" title="Excluded from Leaderboard">🙈</span> ';
+                    let fav = g.is_favorite ? '<span class="material-symbols-outlined" style="color:var(--warning)">star</span>' : '<span class="material-symbols-outlined">star</span>';
+                    let notes = '';
+                    if (g.is_checkmate) notes += '<span class="material-symbols-outlined" style="color:var(--success)" title="Checkmate">tag</span> ';
+                    if (g.needs_review) notes += '<span style="color:var(--danger); font-weight:bold;">Review Needed</span> ';
+                    if (g.exclude_stats) notes += '<span class="material-symbols-outlined" style="color:var(--text-dim);" title="Excluded">visibility_off</span> ';
                     
                     let moves = Math.ceil(g.total_plies / 2);
-                    let dateStr = g.date_played.replace(/\./g, '-');
                     
                     html += `<tr style="${g.needs_review ? 'background: rgba(244, 67, 54, 0.1);' : ''}">
-                        <td style="color:var(--text-dim);">${dateStr}</td>
+                        <td style="color:var(--text-dim);">${g.date_played}</td>
                         <td style="cursor:pointer; color:var(--primary); font-weight:bold;" onclick="loadGame('${g.filename}')">${g.filename}</td>
                         <td>${g.white} <span style="color:var(--text-dim)">vs</span> ${g.black}</td>
                         <td>${moves}</td>
@@ -408,8 +492,9 @@
                         <td>${notes}</td>
                         <td class="action-icons">
                             <span onclick="apiAction('favorite', '${g.filename}')" title="Favorite">${fav}</span>
-                            <span onclick="openMetaEdit('${g.filename}')" title="Edit Metadata">✏️</span>
-                            <span onclick="apiAction('delete', '${g.filename}')" style="color:var(--danger);" title="Delete">❌</span>
+                            <span onclick="openMetaEdit('${g.filename}')" title="Edit Metadata" class="material-symbols-outlined">edit</span>
+                            <span onclick="apiAction('mark_review', '${g.filename}')" title="Mark Review Needed" class="material-symbols-outlined">flag</span>
+                            <span onclick="apiAction('delete', '${g.filename}')" style="color:var(--danger);" title="Delete" class="material-symbols-outlined">delete</span>
                         </td></tr>`;
                 });
                 body.innerHTML = html + "</table>";
@@ -417,7 +502,7 @@
                 body.innerHTML = `<div style="display:flex; gap:10px; margin-bottom: 20px;">
                     <button class="btn-outline" onclick="renderLeaderboard(9999)">All Time</button>
                     <button class="btn-outline" onclick="renderLeaderboard(14)">Last 14 Days</button>
-                    <button class="btn-outline" onclick="renderLeaderboard(1)">Last 24 Hours</button>
+                    <button class="btn-outline" onclick="renderLeaderboard(7)">Last 7 Days</button>
                 </div><div id="analytics-table"></div>`;
                 renderLeaderboard(9999);
             } else if (tab === 'matrix') {
@@ -425,7 +510,7 @@
             }
         }
 
-        function renderLeaderboard(days) {
+        function buildLeaderboardTable(days) {
             const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
             let stats = {};
             
@@ -443,9 +528,13 @@
             });
 
             let sorted = Object.keys(stats).map(p => ({name: p, ...stats[p]})).sort((a,b) => b.pts - a.pts);
-            let html = `<table><tr><th>Rank</th><th>Player</th><th>Points</th><th>Record (W-L-D)</th></tr>`;
-            sorted.forEach((p, i) => { html += `<tr><td>#${i+1}</td><td style="font-weight:bold;">${p.name}</td><td style="color:#f6e05e; font-weight:bold;">${p.pts}</td><td><span style="color:var(--success)">${p.w}</span>-<span style="color:var(--danger)">${p.l}</span>-<span style="color:var(--text-dim)">${p.d}</span></td></tr>`; });
-            document.getElementById('analytics-table').innerHTML = html + "</table>";
+            let html = `<table><tr><th>Rank</th><th>Player</th><th>Pts</th><th>W-L-D</th></tr>`;
+            sorted.forEach((p, i) => { html += `<tr><td>#${i+1}</td><td style="font-weight:bold;">${p.name}</td><td style="color:var(--warning); font-weight:bold;">${p.pts}</td><td><span style="color:var(--success)">${p.w}</span>-<span style="color:var(--danger)">${p.l}</span>-<span style="color:var(--text-dim)">${p.d}</span></td></tr>`; });
+            return html + "</table>";
+        }
+
+        function renderLeaderboard(days) {
+            document.getElementById('analytics-table').innerHTML = buildLeaderboardTable(days);
         }
 
         function renderMatrix() {
@@ -469,7 +558,7 @@
             pArr.forEach(rowP => {
                 html += `<tr><th style="background:var(--bg-card);">${rowP}</th>`;
                 pArr.forEach(colP => {
-                    if (rowP === colP) { html += `<td style="background:var(--bg-base);">-</td>`; } 
+                    if (rowP === colP) { html += `<td style="background:var(--bg-base); color:var(--border);">-</td>`; } 
                     else {
                         let r = matrix[rowP][colP];
                         html += r ? `<td><span style="color:var(--success)">${r.w}</span>-<span style="color:var(--danger)">${r.l}</span>-<span style="color:var(--text-dim)">${r.d}</span></td>` : `<td style="color:var(--border);">0-0-0</td>`;
@@ -493,12 +582,18 @@
             document.getElementById('edit-w-input').value = game.white;
             document.getElementById('edit-b-input').value = game.black;
             document.getElementById('edit-res-input').value = game.result;
+            
+            // Format datetime for the input (YYYY-MM-DDTHH:MM:SS)
+            let dt = game.date_played.replace(' ', 'T');
+            document.getElementById('edit-date-input').value = dt;
+            
             document.getElementById('edit-exclude-input').checked = game.exclude_stats === 1;
             document.getElementById('edit-meta-overlay').style.display = 'flex';
         }
         function closeMetaEdit() { document.getElementById('edit-meta-overlay').style.display = 'none'; }
         
         function submitMetaEdit() {
+            let dtRaw = document.getElementById('edit-date-input').value;
             let payload = {
                 action: 'edit_meta',
                 filename: document.getElementById('edit-target-file').value,
@@ -506,6 +601,7 @@
                 white: document.getElementById('edit-w-input').value,
                 black: document.getElementById('edit-b-input').value,
                 result: document.getElementById('edit-res-input').value,
+                date_played: dtRaw.replace('T', ' '),
                 exclude_stats: document.getElementById('edit-exclude-input').checked ? 1 : 0
             };
             if(!payload.white || !payload.black) return;
@@ -537,7 +633,7 @@
 
         function apiAction(action, filename) {
             if (action === 'delete' && !confirm(`Permanently delete ${filename}?`)) return;
-            fetch('/api/game/update', { method: 'POST', body: JSON.stringify({ action, filename }) }).then(() => openManager());
+            fetch('/api/game/update', { method: 'POST', body: JSON.stringify({ action, filename }) }).then(() => fetchState());
         }
 
         document.addEventListener('keydown', (e) => {

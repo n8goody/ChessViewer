@@ -113,8 +113,7 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(database.get_all_games()).encode("utf-8"))
 
-        # Map /tv directly to the index.html file
-        elif clean_path in ["/", "/analysis", "/tv"]:
+        elif clean_path in ["/", "/live", "/analysis", "/tv"]:
             try:
                 with open("index.html", "r", encoding="utf-8") as f:
                     html_content = f.read()
@@ -128,5 +127,5 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(404, "Endpoint not found")
 
 with socketserver.TCPServer(("", PORT), ChessHandler) as httpd:
-    print(f"Serving Ultimate Homelab Chess (v2.2) on port {PORT}")
+    print(f"Serving Ultimate Homelab Chess (v2.3) on port {PORT}")
     httpd.serve_forever()

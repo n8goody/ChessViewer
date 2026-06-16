@@ -5,7 +5,6 @@ import chess
 import chess.pgn
 import datetime
 import shutil
-import re
 
 DATA_DIR = os.getenv("DATA_DIR", "/data")
 DB_DIR = os.getenv("DB_DIR", "/db")
@@ -30,7 +29,7 @@ def init_db():
         total_plies INTEGER DEFAULT 0
     )''')
     
-    # Safe migrations for existing databases
+    # Safe migrations
     try: c.execute("ALTER TABLE games ADD COLUMN needs_review BOOLEAN DEFAULT 0")
     except sqlite3.OperationalError: pass
     try: c.execute("ALTER TABLE games ADD COLUMN exclude_stats BOOLEAN DEFAULT 0")
@@ -63,18 +62,29 @@ def sync_pgns_to_db():
                     except OSError: pass
                     continue
                 
-                c.execute("SELECT filename FROM games WHERE filename=?", (filename,))
-                if not c.fetchone():
+                c.execute("SELECT total_plies FROM games WHERE filename=?", (filename,))
+                row = c.fetchone()
+                
+                # Backfill legacy games that have 0 plies in the database
+                if row and row[0] == 0 and plies > 0:
+                    c.execute("UPDATE games SET total_plies=? WHERE filename=?", (plies, filename))
+                
+                if not row:
                     white = game.headers.get("White", "Unknown")
                     black = game.headers.get("Black", "Unknown")
                     result = game.headers.get("Result", "*")
-                    date_str = game.headers.get("Date", datetime.datetime.now().strftime("%Y.%m.%d"))
+                    
+                    # Extract full timestamp
+                    d_str = game.headers.get("Date", "")
+                    t_str = game.headers.get("Time", "00:00:00")
+                    if not d_str or d_str == "????.??.??":
+                        date_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime("%Y-%m-%d %H:%M:%S")
+                    else:
+                        date_str = f"{d_str.replace('.', '-')} {t_str}".strip()
+                    
                     is_checkmate = node.board().is_checkmate()
                     
-                    # FEATURE: Infer winner if checkmate and result is unknown
                     if is_checkmate and result == "*":
-                        # node.board().turn returns the player whose turn it is to move.
-                        # If it's checkmate, the player to move has lost.
                         result = "0-1" if node.board().turn == chess.WHITE else "1-0"
                     
                     needs_review = 1 if filename != "live.pgn" else 0
@@ -92,7 +102,6 @@ def sync_pgns_to_db():
 def get_all_games():
     conn = init_db()
     c = conn.cursor()
-    # Sort strictly by date played descending
     c.execute("SELECT * FROM games ORDER BY date_played DESC, filename DESC")
     columns = [col[0] for col in c.description]
     games = [dict(zip(columns, row)) for row in c.fetchall()]
@@ -109,8 +118,8 @@ def update_game_action(post_data):
         w, b, res = post_data.get("white"), post_data.get("black"), post_data.get("result")
         new_name = post_data.get("new_name")
         exclude = post_data.get("exclude_stats", 0)
+        date_played = post_data.get("date_played", "")
         
-        # 1. Handle Rename
         target_filename = filename
         if new_name and new_name != filename:
             if not new_name.endswith(".pgn"): new_name += ".pgn"
@@ -120,21 +129,28 @@ def update_game_action(post_data):
                 target_filename = new_name
             except OSError: pass
 
-        # 2. Update Database (Clears the needs_review flag!)
-        c.execute("UPDATE games SET white=?, black=?, result=?, exclude_stats=?, needs_review=0 WHERE filename=?", 
-                  (w, b, res, exclude, target_filename))
+        c.execute("UPDATE games SET white=?, black=?, result=?, exclude_stats=?, date_played=?, needs_review=0 WHERE filename=?", 
+                  (w, b, res, exclude, date_played, target_filename))
         
-        # 3. Physically edit PGN headers
+        # Safely rewrite PGN headers using the chess library
         path = get_actual_path(target_filename)
         if os.path.exists(path):
-            with open(path, "r") as f: content = f.read()
-            if '[Result' in content: content = re.sub(r'\[Result ".*?"\]', f'[Result "{res}"]', content)
-            else: content = f'[Result "{res}"]\n' + content
-            if '[White' in content: content = re.sub(r'\[White ".*?"\]', f'[White "{w}"]', content)
-            else: content = f'[White "{w}"]\n' + content
-            if '[Black' in content: content = re.sub(r'\[Black ".*?"\]', f'[Black "{b}"]', content)
-            else: content = f'[Black "{b}"]\n' + content
-            with open(path, "w") as f: f.write(content)
+            try:
+                with open(path, "r") as f: game = chess.pgn.read_game(f)
+                if game:
+                    game.headers["White"] = w
+                    game.headers["Black"] = b
+                    game.headers["Result"] = res
+                    
+                    dp_parts = date_played.split(" ")
+                    game.headers["Date"] = dp_parts[0].replace("-", ".") if len(dp_parts) > 0 else "????.??.??"
+                    game.headers["Time"] = dp_parts[1] if len(dp_parts) > 1 else "00:00:00"
+                    
+                    with open(path, "w") as f: f.write(str(game))
+            except Exception: pass
+
+    elif action == "mark_review":
+        c.execute("UPDATE games SET needs_review=1 WHERE filename=?", (filename,))
 
     elif action == "save_raw":
         path = get_actual_path(filename)
@@ -143,6 +159,7 @@ def update_game_action(post_data):
 
     elif action == "favorite":
         c.execute("UPDATE games SET is_favorite = NOT is_favorite WHERE filename=?", (filename,))
+        
     elif action == "delete":
         c.execute("DELETE FROM games WHERE filename=?", (filename,))
         try: os.remove(get_actual_path(filename))
