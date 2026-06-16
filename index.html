@@ -5,63 +5,89 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Homelab Chess</title>
     <style>
-        body { margin: 0; background: #1c1c1c; color: #e1e1e1; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        /* Home Assistant Dark Mode Palette */
+        :root {
+            --bg-base: #111111;
+            --bg-card: #1c1c1c;
+            --bg-hover: #2a2a2a;
+            --primary: #03a9f4;
+            --primary-hover: #0288d1;
+            --text-main: #e1e1e1;
+            --text-dim: #888888;
+            --border: #333333;
+            --danger: #f44336;
+            --danger-hover: #d32f2f;
+            --success: #4caf50;
+            --radius: 12px;
+        }
+
+        body { margin: 0; background: var(--bg-base); color: var(--text-main); font-family: 'Roboto', 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
         
         .board-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2vmin; position: relative; }
-        .material-badge { background: #333; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; margin: 5px 0; font-size: 1.1rem; display: flex; justify-content: center; width: 100%; max-width: 80vh; }
-        .mat-white { color: #f0d9b5; }
-        .mat-black { color: #888; }
+        .material-badge { background: var(--bg-card); color: var(--text-main); padding: 6px 12px; border-radius: var(--radius); font-weight: bold; margin: 5px 0; font-size: 1.1rem; display: flex; justify-content: center; width: 100%; max-width: 80vh; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .mat-white { color: #f0d9b5; } .mat-black { color: #aaaaaa; }
         
         #board-container { width: 100%; height: 100%; max-height: 75vh; max-width: 75vh; display:flex; justify-content:center; }
-        #board-container svg { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0px 10px 30px rgba(0,0,0,0.6)); }
+        #board-container svg { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0px 10px 30px rgba(0,0,0,0.8)); }
         
         .on-screen-controls { display: flex; gap: 10px; margin-top: 10px; width: 100%; max-width: 80vh; justify-content: center; }
-        .on-screen-controls button { font-size: 1.5rem; padding: 10px 20px; background: #333; border-radius: 8px; }
-        .on-screen-controls button:hover { background: #555; }
+        .on-screen-controls button { font-size: 1.5rem; padding: 10px 30px; background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); }
+        .on-screen-controls button:hover { background: var(--bg-hover); }
 
-        #sidebar { width: 350px; background: #242424; display: flex; flex-direction: column; border-left: 1px solid #333; z-index: 10; }
-        .controls-bar { padding: 15px; background: #111; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #333; position: relative; }
-        button, input, select { background: #2a5c8a; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 0.95rem; }
-        button:hover { background: #3b76ad; }
-        .btn-danger { background: #c53030; } .btn-danger:hover { background: #9b2c2c; }
-        .btn-outline { background: transparent; border: 1px solid #555; } .btn-outline:hover { background: #333; }
+        /* Sidebar Styling */
+        #sidebar { width: 380px; background: var(--bg-card); display: flex; flex-direction: column; border-left: 1px solid var(--border); z-index: 10; box-shadow: -5px 0 15px rgba(0,0,0,0.5); }
+        .controls-bar { padding: 20px; background: var(--bg-base); display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid var(--border); position: relative; }
         
-        .notification-dot { position: absolute; top: 10px; right: 10px; background: #e53e3e; color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.8rem; font-weight: bold; display: none; }
+        button, input, select { background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; outline: none; transition: all 0.2s; }
+        input:focus, select:focus { border-color: var(--primary); }
+        button:hover { background: #383838; }
+        .btn-primary { background: var(--primary); border: none; font-weight: bold; } .btn-primary:hover { background: var(--primary-hover); }
+        .btn-danger { background: var(--danger); border: none; } .btn-danger:hover { background: var(--danger-hover); }
+        .btn-outline { background: transparent; border: 1px solid var(--border); } .btn-outline:hover { background: var(--bg-hover); }
+        
+        .notification-dot { position: absolute; top: 10px; right: 15px; background: var(--danger); color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.8rem; font-weight: bold; display: none; box-shadow: 0 0 10px rgba(244, 67, 54, 0.5); }
 
-        #moves-container { flex: 1; padding: 15px 20px; overflow-y: auto; font-size: 1.15rem; line-height: 2; }
-        .turn-number { color: #666; font-size: 0.85em; margin-right: 5px; }
-        .move-span { cursor: pointer; padding: 3px 6px; border-radius: 4px; transition: background 0.1s; }
-        .move-span:hover { background: #444; }
-        .move-active { background: #2a5c8a !important; color: white; }
-        .blunder { background: #c53030 !important; color: white; } /* Highlight big swings */
+        #moves-container { flex: 1; padding: 15px 20px; overflow-y: auto; font-size: 1.15rem; line-height: 2.2; }
+        .turn-number { color: var(--text-dim); font-size: 0.85em; margin-right: 5px; }
+        .move-span { cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background 0.15s; }
+        .move-span:hover { background: var(--bg-hover); }
+        .move-active { background: var(--primary) !important; color: white; box-shadow: 0 2px 5px rgba(3, 169, 244, 0.4); }
+        .blunder { background: var(--danger) !important; color: white; }
 
-        /* Full Screen Modals */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 100; }
-        .modal-content { background: #242424; width: 90%; max-width: 900px; height: 80vh; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #444; }
-        .mini-modal { width: 350px; padding: 20px; border-radius: 8px; background: #1c1c1c; border: 1px solid #444; }
-        .modal-header { padding: 15px 20px; background: #111; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
-        .tabs button { flex: 1; border-radius: 0; background: #333; } .tabs button.active { background: #2a5c8a; }
+        /* Modals */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(5px); }
+        .modal-content { background: var(--bg-base); width: 95%; max-width: 1000px; height: 85vh; border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+        .mini-modal { width: 400px; padding: 25px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); box-shadow: 0 15px 35px rgba(0,0,0,0.8); }
+        
+        .modal-header { padding: 15px 20px; background: var(--bg-card); display: flex; gap: 10px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+        .tabs button { flex: 1; border-radius: 8px; background: transparent; border: none; color: var(--text-dim); font-weight: bold; padding: 10px; } 
+        .tabs button.active { background: var(--bg-hover); color: var(--primary); }
         .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
         
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #444; }
-        th { background: #111; color: #888; position: sticky; top: 0; }
-        tr:hover { background: #333; }
-        .action-icons span { cursor: pointer; margin-right: 10px; font-size: 1.2rem; }
+        table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: var(--radius); overflow: hidden; }
+        th, td { padding: 14px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: var(--bg-hover); color: var(--text-dim); position: sticky; top: 0; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px;}
+        tr:hover td { background: var(--bg-hover); }
+        .action-icons span { cursor: pointer; margin-right: 12px; font-size: 1.2rem; transition: transform 0.1s; display: inline-block; }
+        .action-icons span:hover { transform: scale(1.2); }
 
-        /* Engine Analysis UI */
-        #eval-container { width: 30px; background: #333; display: none; flex-direction: column; justify-content: flex-end; margin: 2vmin 0 2vmin 2vmin; border-radius: 4px; overflow: hidden; position: relative; }
-        #eval-fill { width: 100%; background: #f0d9b5; height: 50%; transition: height 0.5s ease-in-out; }
-        #engine-readout { display: none; padding: 10px; background: #1a365d; font-size: 0.9rem; border-bottom: 1px solid #333; }
-        .best-move { color: #63b3ed; font-weight: bold; font-size: 1.1rem; }
+        #eval-container { width: 30px; background: var(--bg-card); display: none; flex-direction: column; justify-content: flex-end; margin: 2vmin 0 2vmin 2vmin; border-radius: 8px; overflow: hidden; position: relative; border: 1px solid var(--border); }
+        #eval-fill { width: 100%; background: #f0d9b5; height: 50%; transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        #engine-readout { display: none; padding: 15px; background: rgba(3, 169, 244, 0.1); border-bottom: 1px solid var(--border); }
+        .best-move { color: var(--primary); font-weight: bold; font-size: 1.2rem; }
         
-        /* Raw Editor */
-        #raw-pgn-textarea { width: 100%; height: 100%; background: #111; color: #e1e1e1; font-family: monospace; border: none; padding: 10px; box-sizing: border-box; resize: none; }
+        #raw-pgn-textarea { width: 100%; height: 100%; background: var(--bg-hover); color: var(--text-main); font-family: monospace; border: none; padding: 15px; box-sizing: border-box; resize: none; border-radius: 8px; }
+
+        /* TV MODE */
+        body.tv-mode #sidebar { display: none !important; }
+        body.tv-mode .on-screen-controls { display: none !important; }
+        body.tv-mode #board-container { max-height: 90vh; max-width: 90vh; }
+        body.tv-mode .material-badge { max-width: 90vh; font-size: 1.5rem; padding: 10px; }
 
         @media (max-width: 768px) {
             body { flex-direction: column; overflow: auto; }
             #eval-container { display: none !important; }
-            #sidebar { width: 100%; border-left: none; border-top: 2px solid #111; }
+            #sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border); }
             #moves-container { max-height: 40vh; }
         }
     </style>
@@ -81,22 +107,26 @@
     
     <div id="sidebar">
         <div class="controls-bar">
-            <button onclick="openManager()" style="background: #e2e8f0; color: #1a202c; font-weight: bold;">🏆 Game Manager & Analytics</button>
+            <button class="btn-primary" onclick="openManager()">🏆 Game Manager</button>
             <div id="review-dot" class="notification-dot">!</div>
             
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 10px; gap: 5px;">
-                <span id="current-game-label" style="color:#a0aec0; font-size:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;"></span>
-                <button class="btn-outline" onclick="toggleFlip()">Flip 🔃</button>
-                <button id="mode-toggle-btn" class="btn-outline"></button>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 5px; gap: 10px;">
+                <div style="flex:1; overflow:hidden;">
+                    <div id="current-game-label" style="color:var(--text-dim); font-size:0.8rem; text-overflow:ellipsis; white-space:nowrap;"></div>
+                </div>
+                <button class="btn-outline" onclick="openCurrentGameEdit()" title="Edit Metadata">✏️</button>
+                <button class="btn-outline" onclick="toggleFlip()" title="Flip Board">🔃</button>
             </div>
-            <div style="display:flex; gap: 5px;">
-                <button id="edit-raw-btn" class="btn-outline" style="flex:1;" onclick="openRawEditor()">✏️ Edit PGN</button>
-                <button id="deep-analyze-btn" style="flex:1; display:none; background:#48bb78;" onclick="runFullAnalysis()">🔍 Analyze Blunders</button>
+            
+            <div style="display:flex; gap: 8px;">
+                <button id="mode-toggle-btn" class="btn-outline" style="flex:1;"></button>
+                <button id="edit-raw-btn" class="btn-outline" style="flex:1;" onclick="openRawEditor()">Raw PGN</button>
             </div>
+            <button id="deep-analyze-btn" style="display:none; background:var(--success); color:white;" onclick="runFullAnalysis()">🔍 Analyze Blunders</button>
         </div>
 
         <div id="engine-readout">
-            <div>Eval: <span id="engine-eval">--</span></div>
+            <div>Eval: <span id="engine-eval" style="font-weight:bold;">--</span></div>
             <div>Best: <span id="engine-best" class="best-move">--</span></div>
         </div>
 
@@ -111,7 +141,7 @@
                     <button id="tab-leader" onclick="switchTab('leader')">🏅 Leaderboard</button>
                     <button id="tab-matrix" onclick="switchTab('matrix')">🧮 Head-to-Head</button>
                 </div>
-                <button class="btn-danger" onclick="closeManager()" style="flex:0;">Close</button>
+                <button class="btn-outline" onclick="closeManager()" style="flex:0;">Close</button>
             </div>
             <div class="modal-body" id="modal-body-content"></div>
         </div>
@@ -119,17 +149,24 @@
 
     <div id="edit-meta-overlay" class="modal-overlay" style="z-index: 200;">
         <div class="mini-modal">
-            <h3 style="margin-top:0;">Update Game Data</h3>
-            <div style="margin-bottom: 10px;">
-                <label>White Player:</label>
-                <input id="edit-w-input" list="known-players" style="width:100%; box-sizing:border-box; margin-top:5px;">
+            <h3 style="margin-top:0; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Update Game Data</h3>
+            
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 0.85rem; color: var(--text-dim);">Filename (Rename):</label>
+                <input id="edit-name-input" style="width:100%; box-sizing:border-box; margin-top:5px;">
             </div>
-            <div style="margin-bottom: 10px;">
-                <label>Black Player:</label>
-                <input id="edit-b-input" list="known-players" style="width:100%; box-sizing:border-box; margin-top:5px;">
+            <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                <div style="flex: 1;">
+                    <label style="font-size: 0.85rem; color: var(--text-dim);">White Player:</label>
+                    <input id="edit-w-input" list="known-players" style="width:100%; box-sizing:border-box; margin-top:5px;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 0.85rem; color: var(--text-dim);">Black Player:</label>
+                    <input id="edit-b-input" list="known-players" style="width:100%; box-sizing:border-box; margin-top:5px;">
+                </div>
             </div>
-            <div style="margin-bottom: 20px;">
-                <label>Result:</label>
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.85rem; color: var(--text-dim);">Result:</label>
                 <select id="edit-res-input" style="width:100%; box-sizing:border-box; margin-top:5px;">
                     <option value="*">Ongoing (*)</option>
                     <option value="1-0">White Wins (1-0)</option>
@@ -137,9 +174,14 @@
                     <option value="1/2-1/2">Draw (1/2-1/2)</option>
                 </select>
             </div>
+            <div style="margin-bottom: 25px; display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" id="edit-exclude-input" style="width: 18px; height: 18px; cursor: pointer;">
+                <label for="edit-exclude-input" style="cursor: pointer; font-size: 0.9rem;">Exclude from Leaderboard</label>
+            </div>
+
             <div style="display:flex; gap:10px;">
-                <button style="flex:1;" onclick="submitMetaEdit()">Save</button>
-                <button class="btn-danger" style="flex:1;" onclick="closeMetaEdit()">Cancel</button>
+                <button class="btn-primary" style="flex:1;" onclick="submitMetaEdit()">Save Changes</button>
+                <button class="btn-outline" style="flex:1;" onclick="closeMetaEdit()">Cancel</button>
             </div>
             <input type="hidden" id="edit-target-file">
             <datalist id="known-players"></datalist>
@@ -147,41 +189,46 @@
     </div>
     
     <div id="raw-editor-overlay" class="modal-overlay" style="z-index: 200;">
-        <div class="modal-content" style="max-width: 600px; height: 60vh;">
+        <div class="modal-content" style="max-width: 700px; height: 65vh;">
             <div class="modal-header">
-                <h3>Raw PGN Editor</h3>
-                <div style="display:flex; gap: 5px;">
-                    <button style="background:#48bb78;" onclick="saveRawPGN()">Save</button>
-                    <button class="btn-danger" onclick="closeRawEditor()">Cancel</button>
+                <h3 style="margin:0;">Raw PGN Editor</h3>
+                <div style="display:flex; gap: 10px;">
+                    <button class="btn-primary" onclick="saveRawPGN()">Save Source</button>
+                    <button class="btn-outline" onclick="closeRawEditor()">Cancel</button>
                 </div>
             </div>
-            <textarea id="raw-pgn-textarea"></textarea>
+            <div style="flex:1; padding: 15px;">
+                <textarea id="raw-pgn-textarea"></textarea>
+            </div>
         </div>
     </div>
 
     <script>
-        const IS_ANALYSIS = window.location.pathname === '/analysis';
+        const PATH = window.location.pathname;
+        const IS_ANALYSIS = PATH === '/analysis';
+        const IS_TV = PATH === '/tv';
         
-        // --- URL Tracking Feature ---
+        if (IS_TV) document.body.classList.add('tv-mode');
+        
         const urlParams = new URLSearchParams(window.location.search);
         let currentGameFile = urlParams.get('file') || 'live.pgn';
         
         let totalPlies = 0, currentViewPly = -1, lastMovesData = [];
         let isFlipped = false, currentBestMove = null, evalCache = {};
+        window.allGames = [];
 
-        // UI Setup
+        // UI Initialization
         document.getElementById('mode-toggle-btn').innerText = IS_ANALYSIS ? 'Live View' : 'Analyze Engine';
         document.getElementById('mode-toggle-btn').onclick = () => window.location.href = IS_ANALYSIS ? `/?file=${currentGameFile}` : `/analysis?file=${currentGameFile}`;
         document.getElementById('current-game-label').innerText = `Viewing: ${currentGameFile}`;
         document.getElementById('edit-raw-btn').style.display = (currentGameFile === 'live.pgn') ? 'none' : 'block';
         
-        if (IS_ANALYSIS) {
+        if (IS_ANALYSIS && !IS_TV) {
             document.getElementById('eval-container').style.display = 'flex';
             document.getElementById('engine-readout').style.display = 'block';
             document.getElementById('deep-analyze-btn').style.display = 'block';
         }
 
-        // --- Core Interactions ---
         function toggleFlip() { isFlipped = !isFlipped; updateBoard(); renderMaterial(); }
         function controlArrow(dir) {
             let current = (currentViewPly === -1) ? totalPlies : currentViewPly;
@@ -191,7 +238,7 @@
 
         function loadGame(filename) {
             currentGameFile = filename;
-            history.pushState(null, '', `?file=${filename}`); // Update URL without reloading
+            if (!IS_TV) history.pushState(null, '', `?file=${filename}`); 
             
             document.getElementById('current-game-label').innerText = `Viewing: ${filename}`;
             document.getElementById('edit-raw-btn').style.display = (filename === 'live.pgn') ? 'none' : 'block';
@@ -202,7 +249,7 @@
         function viewPly(ply) {
             currentViewPly = ply; currentBestMove = null;
             updateBoard(); renderMovesList(); renderMaterial();
-            if (IS_ANALYSIS) {
+            if (IS_ANALYSIS && !IS_TV) {
                 let moveObj = lastMovesData.find(m => m.ply === ply);
                 if (moveObj) analyzePosition(moveObj.fen, moveObj.ply);
             }
@@ -234,13 +281,12 @@
         }
 
         function renderMovesList() {
-            if (lastMovesData.length === 0) return;
+            if (lastMovesData.length === 0 || IS_TV) return;
             let html = '', activePly = (currentViewPly === -1) ? totalPlies : currentViewPly;
             for(let i = 1; i < lastMovesData.length; i += 2) {
                 let turn = Math.floor(i / 2) + 1, white = lastMovesData[i], black = lastMovesData[i+1];
                 html += `<div><span class="turn-number">${turn}.</span>`;
                 
-                // Colorize blunders if evalCache knows about them
                 let wErr = evalCache[white.ply]?.isBlunder ? 'blunder' : '';
                 let wClass = (white.ply === activePly) ? 'move-active' : wErr;
                 html += `<span class="move-span ${wClass}" onclick="viewPly(${white.ply})">${white.san}</span> `;
@@ -255,15 +301,12 @@
             document.getElementById('moves-container').innerHTML = html;
         }
 
-        // --- Analysis Engine ---
         function analyzePosition(fen, ply) {
-            if (!fen) return;
+            if (!fen || IS_TV) return;
             document.getElementById('engine-eval').innerText = "Calc...";
             return fetch("https://chess-api.com/v1", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fen: fen, depth: 10 }) })
             .then(r => r.json()).then(data => {
                 let score = data.mate ? (data.mate > 0 ? 10 : -10) : (data.eval / 100);
-                
-                // Cache for deep analysis
                 if(ply !== undefined) evalCache[ply] = { score: score, isBlunder: false };
                 
                 document.getElementById('engine-eval').innerText = data.mate ? `M${data.mate}` : (score > 0 ? `+${score.toFixed(2)}` : score.toFixed(2));
@@ -273,37 +316,31 @@
                 
                 let pct = Math.max(0, Math.min(100, 50 + (score * 10)));
                 let fill = document.getElementById('eval-fill'), container = document.getElementById('eval-container');
-                if (isFlipped) { fill.style.height = `${100 - pct}%`; fill.style.background = '#333'; container.style.background = '#f0d9b5'; } 
-                else { fill.style.height = `${pct}%`; fill.style.background = '#f0d9b5'; container.style.background = '#333'; }
+                if (isFlipped) { fill.style.height = `${100 - pct}%`; fill.style.background = 'var(--bg-card)'; container.style.background = '#f0d9b5'; } 
+                else { fill.style.height = `${pct}%`; fill.style.background = '#f0d9b5'; container.style.background = 'var(--bg-card)'; }
                 return score;
             });
         }
 
         async function runFullAnalysis() {
             let btn = document.getElementById('deep-analyze-btn');
-            btn.innerText = "Analyzing..."; btn.style.background = "#e53e3e";
-            
+            btn.innerText = "Analyzing..."; btn.style.background = "var(--danger)";
             for (let i = 1; i < lastMovesData.length; i++) {
                 let move = lastMovesData[i];
                 if (!evalCache[move.ply]) {
                     btn.innerText = `Analyzing ${move.ply}/${totalPlies}`;
                     await analyzePosition(move.fen, move.ply);
                 }
-                
-                // Compare to previous move to detect blunder
                 let prevScore = evalCache[move.ply - 1]?.score || 0;
                 let currScore = evalCache[move.ply].score;
                 let shift = currScore - prevScore;
-                
-                // White moved (shift goes negative = bad). Black moved (shift goes positive = bad).
-                if (move.ply % 2 !== 0 && shift < -2.0) evalCache[move.ply].isBlunder = true; // White blunder
-                if (move.ply % 2 === 0 && shift > 2.0) evalCache[move.ply].isBlunder = true;  // Black blunder
+                if (move.ply % 2 !== 0 && shift < -2.0) evalCache[move.ply].isBlunder = true; 
+                if (move.ply % 2 === 0 && shift > 2.0) evalCache[move.ply].isBlunder = true;  
             }
-            btn.innerText = "Analysis Complete"; btn.style.background = "#333";
-            renderMovesList(); // Re-render to show red highlights
+            btn.innerText = "Analysis Complete"; btn.style.background = "var(--bg-hover)";
+            renderMovesList(); 
         }
 
-        // --- Polling ---
         function fetchState() {
             fetch(`/game-data?file=${currentGameFile}&t=${Date.now()}`)
                 .then(r => r.json()).then(data => {
@@ -313,29 +350,29 @@
                         if (currentViewPly === -1) {
                             currentBestMove = null;
                             updateBoard(); renderMovesList(); renderMaterial();
-                            const c = document.getElementById('moves-container'); c.scrollTop = c.scrollHeight;
-                            if (IS_ANALYSIS && lastMovesData.length > 0) analyzePosition(lastMovesData[lastMovesData.length - 1].fen, lastMovesData[lastMovesData.length - 1].ply);
+                            if(!IS_TV) {
+                                const c = document.getElementById('moves-container'); c.scrollTop = c.scrollHeight;
+                                if (IS_ANALYSIS && lastMovesData.length > 0) analyzePosition(lastMovesData[lastMovesData.length - 1].fen, lastMovesData[lastMovesData.length - 1].ply);
+                            }
                         } else renderMovesList();
                     }
                 }).catch(()=>{});
                 
-            // Check for notifications
-            fetch('/api/games').then(r=>r.json()).then(games => {
-                let needsReview = games.filter(g => g.needs_review).length;
-                let dot = document.getElementById('review-dot');
-                if (needsReview > 0) { dot.style.display = 'block'; dot.innerText = needsReview; } 
-                else { dot.style.display = 'none'; }
-            });
+            if(!IS_TV) {
+                fetch('/api/games').then(r=>r.json()).then(games => {
+                    window.allGames = games;
+                    let needsReview = games.filter(g => g.needs_review).length;
+                    let dot = document.getElementById('review-dot');
+                    if (needsReview > 0) { dot.style.display = 'block'; dot.innerText = needsReview; } 
+                    else { dot.style.display = 'none'; }
+                });
+            }
         }
 
-        // --- Manager UI & Analytics ---
+        // --- Manager UI ---
         function openManager() { 
             document.getElementById('modal-overlay').style.display = 'flex'; 
-            fetch('/api/games').then(r=>r.json()).then(games => {
-                window.allGames = games; 
-                updateDatalist();
-                switchTab('games');
-            });
+            updateDatalist(); switchTab('games');
         }
         function closeManager() { document.getElementById('modal-overlay').style.display = 'none'; }
         
@@ -352,20 +389,27 @@
             const body = document.getElementById('modal-body-content'); body.innerHTML = "<h2>Loading...</h2>";
             
             if (tab === 'games') {
-                let html = `<table><tr><th>File</th><th>White</th><th>Black</th><th>Result</th><th>Notes</th><th>Actions</th></tr>`;
+                let html = `<table><tr><th>Date</th><th>File</th><th>Players (W vs B)</th><th>Moves</th><th>Result</th><th>Notes</th><th>Actions</th></tr>`;
                 window.allGames.forEach(g => {
                     let fav = g.is_favorite ? '⭐' : '☆', notes = '';
-                    if (g.is_checkmate) notes += '<span style="color:#48bb78" title="Checkmate">#️⃣</span> ';
-                    if (g.needs_review) notes += '<span style="color:#e53e3e; font-weight:bold;">Review Needed!</span> ';
+                    if (g.is_checkmate) notes += '<span style="color:var(--success)" title="Checkmate">#️⃣</span> ';
+                    if (g.needs_review) notes += '<span style="color:var(--danger); font-weight:bold;">Review Needed!</span> ';
+                    if (g.exclude_stats) notes += '<span style="color:var(--text-dim);" title="Excluded from Leaderboard">🙈</span> ';
                     
-                    html += `<tr style="${g.needs_review ? 'background: #2d1818;' : ''}">
-                        <td style="cursor:pointer; color:#63b3ed;" onclick="loadGame('${g.filename}')">${g.filename}</td>
-                        <td>${g.white}</td><td>${g.black}</td><td>${g.result}</td><td>${notes}</td>
+                    let moves = Math.ceil(g.total_plies / 2);
+                    let dateStr = g.date_played.replace(/\./g, '-');
+                    
+                    html += `<tr style="${g.needs_review ? 'background: rgba(244, 67, 54, 0.1);' : ''}">
+                        <td style="color:var(--text-dim);">${dateStr}</td>
+                        <td style="cursor:pointer; color:var(--primary); font-weight:bold;" onclick="loadGame('${g.filename}')">${g.filename}</td>
+                        <td>${g.white} <span style="color:var(--text-dim)">vs</span> ${g.black}</td>
+                        <td>${moves}</td>
+                        <td style="font-weight:bold;">${g.result}</td>
+                        <td>${notes}</td>
                         <td class="action-icons">
-                            <span onclick="apiAction('favorite', '${g.filename}')">${fav}</span>
-                            <span onclick="openMetaEdit('${g.filename}', '${g.white}', '${g.black}', '${g.result}')">✏️</span>
-                            <span onclick="apiAction('rename', '${g.filename}')">🏷️</span>
-                            <span onclick="apiAction('delete', '${g.filename}')" style="color:red;">❌</span>
+                            <span onclick="apiAction('favorite', '${g.filename}')" title="Favorite">${fav}</span>
+                            <span onclick="openMetaEdit('${g.filename}')" title="Edit Metadata">✏️</span>
+                            <span onclick="apiAction('delete', '${g.filename}')" style="color:var(--danger);" title="Delete">❌</span>
                         </td></tr>`;
                 });
                 body.innerHTML = html + "</table>";
@@ -386,7 +430,7 @@
             let stats = {};
             
             window.allGames.forEach(g => {
-                if (g.is_empty || g.result === '*') return;
+                if (g.is_empty || g.result === '*' || g.exclude_stats) return;
                 let date = new Date(g.date_played.replace(/\./g, '-'));
                 if (days < 9999 && date < cutoff) return;
                 
@@ -400,14 +444,14 @@
 
             let sorted = Object.keys(stats).map(p => ({name: p, ...stats[p]})).sort((a,b) => b.pts - a.pts);
             let html = `<table><tr><th>Rank</th><th>Player</th><th>Points</th><th>Record (W-L-D)</th></tr>`;
-            sorted.forEach((p, i) => { html += `<tr><td>#${i+1}</td><td>${p.name}</td><td style="color:#f6e05e; font-weight:bold;">${p.pts}</td><td><span style="color:#48bb78">${p.w}</span>-<span style="color:#f56565">${p.l}</span>-<span style="color:#a0aec0">${p.d}</span></td></tr>`; });
+            sorted.forEach((p, i) => { html += `<tr><td>#${i+1}</td><td style="font-weight:bold;">${p.name}</td><td style="color:#f6e05e; font-weight:bold;">${p.pts}</td><td><span style="color:var(--success)">${p.w}</span>-<span style="color:var(--danger)">${p.l}</span>-<span style="color:var(--text-dim)">${p.d}</span></td></tr>`; });
             document.getElementById('analytics-table').innerHTML = html + "</table>";
         }
 
         function renderMatrix() {
             let matrix = {}, players = new Set();
             window.allGames.forEach(g => {
-                if (g.is_empty || g.result === '*') return;
+                if (g.is_empty || g.result === '*' || g.exclude_stats) return;
                 players.add(g.white); players.add(g.black);
                 if(!matrix[g.white]) matrix[g.white] = {}; if(!matrix[g.black]) matrix[g.black] = {};
                 if(!matrix[g.white][g.black]) matrix[g.white][g.black] = {w:0, l:0, d:0};
@@ -419,16 +463,16 @@
             });
             
             let pArr = Array.from(players).sort();
-            let html = `<div style="overflow-x:auto;"><table><tr><th>Matchups (W-L-D)</th>`;
+            let html = `<div style="overflow-x:auto;"><table><tr><th>W-L-D</th>`;
             pArr.forEach(p => html += `<th>${p}</th>`); html += `</tr>`;
             
             pArr.forEach(rowP => {
-                html += `<tr><th>${rowP}</th>`;
+                html += `<tr><th style="background:var(--bg-card);">${rowP}</th>`;
                 pArr.forEach(colP => {
-                    if (rowP === colP) { html += `<td style="background:#111;">-</td>`; } 
+                    if (rowP === colP) { html += `<td style="background:var(--bg-base);">-</td>`; } 
                     else {
                         let r = matrix[rowP][colP];
-                        html += r ? `<td><span style="color:#48bb78">${r.w}</span>-<span style="color:#f56565">${r.l}</span>-<span style="color:#a0aec0">${r.d}</span></td>` : `<td>0-0-0</td>`;
+                        html += r ? `<td><span style="color:var(--success)">${r.w}</span>-<span style="color:var(--danger)">${r.l}</span>-<span style="color:var(--text-dim)">${r.d}</span></td>` : `<td style="color:var(--border);">0-0-0</td>`;
                     }
                 });
                 html += `</tr>`;
@@ -436,22 +480,46 @@
             document.getElementById('modal-body-content').innerHTML = html + `</table></div>`;
         }
 
-        // --- Data Editors ---
-        function openMetaEdit(filename, w, b, res) {
-            document.getElementById('edit-target-file').value = filename;
-            document.getElementById('edit-w-input').value = w;
-            document.getElementById('edit-b-input').value = b;
-            document.getElementById('edit-res-input').value = res;
+        // --- Editors ---
+        function openCurrentGameEdit() { openMetaEdit(currentGameFile); }
+        
+        function openMetaEdit(filename) {
+            let game = window.allGames.find(g => g.filename === filename);
+            if(!game) return;
+            
+            updateDatalist();
+            document.getElementById('edit-target-file').value = game.filename;
+            document.getElementById('edit-name-input').value = game.filename;
+            document.getElementById('edit-w-input').value = game.white;
+            document.getElementById('edit-b-input').value = game.black;
+            document.getElementById('edit-res-input').value = game.result;
+            document.getElementById('edit-exclude-input').checked = game.exclude_stats === 1;
             document.getElementById('edit-meta-overlay').style.display = 'flex';
         }
         function closeMetaEdit() { document.getElementById('edit-meta-overlay').style.display = 'none'; }
+        
         function submitMetaEdit() {
-            let f = document.getElementById('edit-target-file').value;
-            let w = document.getElementById('edit-w-input').value, b = document.getElementById('edit-b-input').value;
-            let res = document.getElementById('edit-res-input').value;
-            if(!w || !b) return;
-            fetch('/api/game/update', { method: 'POST', body: JSON.stringify({action:'edit_meta', filename:f, white:w, black:b, result:res}) })
-                .then(() => { closeMetaEdit(); openManager(); }); 
+            let payload = {
+                action: 'edit_meta',
+                filename: document.getElementById('edit-target-file').value,
+                new_name: document.getElementById('edit-name-input').value,
+                white: document.getElementById('edit-w-input').value,
+                black: document.getElementById('edit-b-input').value,
+                result: document.getElementById('edit-res-input').value,
+                exclude_stats: document.getElementById('edit-exclude-input').checked ? 1 : 0
+            };
+            if(!payload.white || !payload.black) return;
+            
+            fetch('/api/game/update', { method: 'POST', body: JSON.stringify(payload) })
+                .then(() => { 
+                    closeMetaEdit(); 
+                    if(payload.filename === currentGameFile && payload.new_name !== currentGameFile) {
+                        loadGame(payload.new_name.endsWith('.pgn') ? payload.new_name : payload.new_name + '.pgn');
+                    } else {
+                        fetchState();
+                        if(document.getElementById('modal-overlay').style.display === 'flex') openManager();
+                    }
+                }); 
         }
         
         function openRawEditor() {
@@ -468,14 +536,14 @@
         }
 
         function apiAction(action, filename) {
-            let payload = { action, filename };
-            if (action === 'delete' && !confirm(`Delete ${filename}?`)) return;
-            if (action === 'rename') { let nn = prompt("New filename:"); if (!nn) return; payload.new_name = nn; }
-            fetch('/api/game/update', { method: 'POST', body: JSON.stringify(payload) }).then(() => openManager());
+            if (action === 'delete' && !confirm(`Permanently delete ${filename}?`)) return;
+            fetch('/api/game/update', { method: 'POST', body: JSON.stringify({ action, filename }) }).then(() => openManager());
         }
 
-        // Keybindings
         document.addEventListener('keydown', (e) => {
+            if (document.getElementById('edit-meta-overlay').style.display === 'flex' || 
+                document.getElementById('raw-editor-overlay').style.display === 'flex') return;
+            
             if (e.key === 'ArrowLeft') controlArrow('left');
             else if (e.key === 'ArrowRight') controlArrow('right');
         });

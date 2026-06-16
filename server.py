@@ -16,20 +16,22 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
         if parsed_url.path == "/api/game/update":
             content_length = int(self.headers['Content-Length'])
             post_data = json.loads(self.rfile.read(content_length).decode('utf-8'))
-            
             database.update_game_action(post_data)
-            
             self.send_response(200)
             self.end_headers()
             self.wfile.write(b'{"status":"success"}')
 
     def do_GET(self):
-        database.sync_pgns_to_db() 
-        
         parsed_url = urllib.parse.urlparse(self.path)
         clean_path = parsed_url.path
+
+        if clean_path == "/favicon.ico":
+            self.send_response(204) 
+            self.end_headers()
+            return
+
+        database.sync_pgns_to_db() 
         query_components = urllib.parse.parse_qs(parsed_url.query)
-        
         filename = query_components.get("file", ["live.pgn"])[0]
         pgn_path = database.get_actual_path(filename)
 
@@ -67,7 +69,6 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 with open(pgn_path, "r") as pgn_file: game = chess.pgn.read_game(pgn_file)
                 moves, ply = [], 0
-                
                 def calc_material(board):
                     score = 0
                     for p in board.piece_map().values():
@@ -97,7 +98,6 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(b'{"total_plies": 0, "moves": []}')
 
         elif clean_path == "/api/game/raw":
-            # Serve the raw PGN text for the new editor modal
             try:
                 with open(pgn_path, "r") as f: raw = f.read()
                 self.send_response(200)
@@ -113,7 +113,8 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(database.get_all_games()).encode("utf-8"))
 
-        elif clean_path == "/" or clean_path == "/analysis":
+        # Map /tv directly to the index.html file
+        elif clean_path in ["/", "/analysis", "/tv"]:
             try:
                 with open("index.html", "r", encoding="utf-8") as f:
                     html_content = f.read()
@@ -123,7 +124,9 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(html_content.encode("utf-8"))
             except FileNotFoundError:
                 self.send_error(404, "index.html not found")
+        else:
+            self.send_error(404, "Endpoint not found")
 
 with socketserver.TCPServer(("", PORT), ChessHandler) as httpd:
-    print(f"Serving Ultimate Homelab Chess (v2.1) on port {PORT}")
+    print(f"Serving Ultimate Homelab Chess (v2.2) on port {PORT}")
     httpd.serve_forever()
