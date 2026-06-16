@@ -30,7 +30,6 @@
         /* App Layouts - Adjusted for Home Assistant iFrames & Tablets */
         #home-view, #leaderboard-view, #app-view { display: none; width: 100%; height: 100%; }
         
-        /* Using flex-start prevents the top from getting cut off on shorter tablet screens */
         #home-view { flex-direction: column; align-items: center; justify-content: flex-start; padding: 5vmin 2vmin; overflow-y: auto; box-sizing: border-box; }
         #leaderboard-view { flex-direction: column; padding: 30px; box-sizing: border-box; overflow-y: auto; }
         #app-view { flex-direction: row; }
@@ -43,9 +42,9 @@
         .board-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2vmin; position: relative; }
         .material-badge { background: var(--bg-card); color: var(--text-main); padding: 6px 12px; border-radius: var(--radius); font-weight: bold; margin: 5px 0; font-size: 1.1rem; display: flex; justify-content: center; width: 100%; max-width: 80vh; border: 1px solid var(--border); transition: color 0.3s; }
         
-        /* REMOVED filter: drop-shadow(...) to fix Fully Kiosk Browser SVG bugs */
+        /* Using standard <img> tags prevents HA Base URL issues in Fully Kiosk Browser Android WebViews */
         #board-container { width: 100%; height: 100%; max-height: 75vh; max-width: 75vh; display:flex; justify-content:center; }
-        #board-container svg { width: 100%; height: 100%; object-fit: contain; }
+        #board-container img { width: 100%; height: 100%; object-fit: contain; }
         
         .on-screen-controls { display: flex; gap: 10px; margin-top: 10px; width: 100%; max-width: 80vh; justify-content: center; }
         .on-screen-controls button { padding: 8px 25px; background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); }
@@ -100,7 +99,7 @@
         
         #raw-pgn-textarea { width: 100%; height: 100%; background: var(--bg-hover); color: var(--text-main); font-family: monospace; border: none; padding: 15px; box-sizing: border-box; resize: none; border-radius: 8px; }
 
-        /* TV MODES (Rescaled to Prioritize Board Size) */
+        /* TV MODES */
         body.tv-mode #tv-leaderboard { display: flex; width: 280px; }
         body.tv-mode #tv-leader-content table { font-size: 0.85rem; }
         body.tv-mode #tv-leader-content th, body.tv-mode #tv-leader-content td { padding: 8px 10px; }
@@ -124,7 +123,7 @@
 
         @media (max-width: 768px) {
             body { flex-direction: column; overflow: auto; }
-            #app-view { flex-direction: column; } /* Removing display:flex !important fixes the background bleed bug */
+            #app-view { flex-direction: column; } 
             #eval-container { display: none !important; }
             #sidebar { display: contents; }
             
@@ -186,8 +185,7 @@
             <button id="tab-matrix" onclick="switchLeaderTab('matrix')"><span class="material-symbols-outlined">grid_on</span> Head-to-Head Matrix</button>
         </div>
         
-        <div id="leaderboard-body-content" style="background:var(--bg-card); border-radius:var(--radius); padding:20px; flex:1;">
-            </div>
+        <div id="leaderboard-body-content" style="background:var(--bg-card); border-radius:var(--radius); padding:20px; flex:1;"></div>
     </div>
 
     <div id="app-view">
@@ -202,7 +200,8 @@
 
         <div class="board-area">
             <div id="mat-top" class="material-badge"></div>
-            <div id="board-container"></div>
+            <div id="board-container">
+                </div>
             <div class="on-screen-controls">
                 <button onclick="controlArrow('first')"><span class="material-symbols-outlined">keyboard_double_arrow_left</span></button>
                 <button onclick="controlArrow('left')"><span class="material-symbols-outlined">chevron_left</span></button>
@@ -421,8 +420,17 @@
             if (IS_HOME || IS_LEADERBOARD) return;
             const target = (currentViewPly === -1) ? '' : `&ply=${currentViewPly}`;
             const bm = (IS_ANALYSIS && currentBestMove) ? `&bestmove=${encodeURIComponent(currentBestMove)}` : '';
-            fetch(`/board.svg?file=${currentGameFile}${target}&flipped=${isFlipped}${bm}&t=${Date.now()}`)
-                .then(r => r.text()).then(svg => document.getElementById('board-container').innerHTML = svg);
+            const svgUrl = `/board.svg?file=${currentGameFile}${target}&flipped=${isFlipped}${bm}&t=${Date.now()}`;
+            
+            // Fixed rendering via standalone image to bypass Android WebView CSS bugs
+            let img = document.getElementById('board-img');
+            if (!img) {
+                img = document.createElement('img');
+                img.id = 'board-img';
+                document.getElementById('board-container').innerHTML = ''; 
+                document.getElementById('board-container').appendChild(img);
+            }
+            img.src = svgUrl;
         }
 
         function getDiffColor(absDiff) {
@@ -443,7 +451,6 @@
             
             let game = window.allGames.find(g => g.filename === currentGameFile);
             
-            // Clean player names of trailing '-1'
             let wName = (game && game.white !== 'Unknown' ? game.white : 'White').replace(/-1$/, '');
             let bName = (game && game.black !== 'Unknown' ? game.black : 'Black').replace(/-1$/, '');
             
@@ -455,7 +462,7 @@
 
             if (isFlipped) {
                 top.innerText = wText; top.className = "material-badge"; if(diff > 0) top.style.color = color;
-                bot.innerText = bText; bot.className = "material-badge"; if(diff < 0) bot.style.color = color;
+                bot.innerText = bText; bot.className = "material-badge"; if(diff < 0) top.style.color = color;
             } else {
                 top.innerText = bText; top.className = "material-badge"; if(diff < 0) top.style.color = color;
                 bot.innerText = wText; bot.className = "material-badge"; if(diff > 0) bot.style.color = color;
@@ -603,8 +610,14 @@
                 if (g.filename === 'live.pgn') return;
                 
                 let fav = g.is_favorite ? '<span class="material-symbols-outlined filled-icon" style="color:var(--warning)">star</span>' : '<span class="material-symbols-outlined">star</span>';
+                
                 let flags = '';
-                if (g.is_checkmate) flags += '<span class="material-symbols-outlined" style="color:var(--success)" title="Checkmate">tag</span> ';
+                if (g.is_checkmate) {
+                    flags += '<span class="material-symbols-outlined" style="color:var(--success)" title="Checkmate">tag</span> ';
+                } else if (g.result === '1-0' || g.result === '0-1') {
+                    // Resigned logic injection
+                    flags += '<span class="material-symbols-outlined" style="color:var(--warning)" title="Resigned / Timeout">flag_circle</span> ';
+                }
                 
                 let flagIcon = g.needs_review ? '<span class="material-symbols-outlined filled-icon" style="color:var(--danger)">flag</span>' : '<span class="material-symbols-outlined">flag</span>';
                 let moves = Math.ceil(g.total_plies / 2);
@@ -615,17 +628,16 @@
                 let formattedDate = formatDateTimeStr(g.date_played);
                 let notesText = g.notes ? g.notes : '';
                 
-                // Clean player names of trailing '-1'
                 let cleanW = g.white.replace(/-1$/, '');
                 let cleanB = g.black.replace(/-1$/, '');
                 
+                // Formatted Player Win Result
                 let resDisplay = g.result;
-                if (g.result === '1-0') resDisplay = `<strong>${cleanW}</strong>`;
-                else if (g.result === '0-1') resDisplay = `<strong>${cleanB}</strong>`;
+                if (g.result === '1-0') resDisplay = `<strong>${cleanW} won</strong>`;
+                else if (g.result === '0-1') resDisplay = `<strong>${cleanB} won</strong>`;
                 else if (g.result === '1/2-1/2') resDisplay = 'Draw';
                 else if (g.result === '*') resDisplay = 'Ongoing';
                 
-                // Tr makes row clickable to open the game
                 html += `<tr class="${trClass}" style="cursor:pointer; ${g.needs_review ? 'background: rgba(244, 67, 54, 0.1);' : ''}" onclick="window.location.href='/analysis?file=${g.filename}'">
                     <td style="color:var(--text-dim);">${formattedDate}</td>
                     <td>${cleanW} <span style="color:var(--text-dim)">vs</span> ${cleanB}</td>
