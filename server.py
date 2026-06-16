@@ -1,13 +1,10 @@
 import http.server
 import socketserver
-import os
 import urllib.parse
 import json
 import chess
 import chess.pgn
 import chess.svg
-
-# Import our custom database layer
 import database
 
 PORT = 8080
@@ -39,6 +36,7 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
         if clean_path == "/board.svg":
             target_ply = int(query_components["ply"][0]) if "ply" in query_components else None
             is_flipped = query_components.get("flipped", ["false"])[0] == "true"
+            best_move_san = query_components.get("bestmove", [None])[0]
             orientation = chess.BLACK if is_flipped else chess.WHITE
             
             try:
@@ -51,7 +49,16 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
                         ply_count += 1
                 else: node = game.end()
                 
-                svg_data = chess.svg.board(board=node.board(), lastmove=node.move, orientation=orientation)
+                # FEATURE: Draw Best Move Arrow
+                arrows = []
+                if best_move_san:
+                    try:
+                        move = node.board().parse_san(best_move_san)
+                        # #48bb7899 is a translucent green arrow
+                        arrows.append(chess.svg.Arrow(move.from_square, move.to_square, color="#48bb7899"))
+                    except ValueError: pass
+                
+                svg_data = chess.svg.board(board=node.board(), lastmove=node.move, orientation=orientation, arrows=arrows)
                 self.send_response(200)
                 self.send_header("Content-type", "image/svg+xml")
                 self.end_headers()
@@ -98,14 +105,7 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(database.get_all_games()).encode("utf-8"))
 
-        elif clean_path == "/api/leaderboard":
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(database.calculate_elo_leaderboards()).encode("utf-8"))
-
         elif clean_path == "/" or clean_path == "/analysis":
-            # Load the completely separate HTML file!
             try:
                 with open("index.html", "r", encoding="utf-8") as f:
                     html_content = f.read()
@@ -117,5 +117,5 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(404, "index.html not found in server directory")
 
 with socketserver.TCPServer(("", PORT), ChessHandler) as httpd:
-    print(f"Serving Ultimate Homelab Chess (v2.0) on port {PORT}")
+    print(f"Serving Ultimate Homelab Chess (v2.1) on port {PORT}")
     httpd.serve_forever()

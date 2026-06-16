@@ -17,7 +17,7 @@
         
         #sidebar { width: 350px; background: #242424; display: flex; flex-direction: column; border-left: 1px solid #333; z-index: 10; }
         .controls-bar { padding: 15px; background: #111; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #333; }
-        button, input { background: #2a5c8a; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 0.95rem; }
+        button, input, select { background: #2a5c8a; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 0.95rem; }
         button:hover { background: #3b76ad; }
         .btn-danger { background: #c53030; } .btn-danger:hover { background: #9b2c2c; }
         .btn-outline { background: transparent; border: 1px solid #555; } .btn-outline:hover { background: #333; }
@@ -28,9 +28,11 @@
         .move-span:hover { background: #444; }
         .move-active { background: #2a5c8a !important; color: white; }
 
-        /* Game Manager Modal */
-        #modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 100; }
+        /* Full Screen Modals */
+        #modal-overlay, #edit-player-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 100; }
+        #edit-player-overlay { z-index: 200; }
         .modal-content { background: #242424; width: 90%; max-width: 900px; height: 80vh; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #444; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+        .mini-modal { width: 350px; height: auto; padding: 20px; border-radius: 8px; background: #1c1c1c; border: 1px solid #444;}
         .modal-header { padding: 15px 20px; background: #111; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
         .tabs button { flex: 1; border-radius: 0; background: #333; } .tabs button.active { background: #2a5c8a; }
         .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
@@ -56,9 +58,7 @@
     </style>
 </head>
 <body>
-    <div id="eval-container">
-        <div id="eval-fill"></div>
-    </div>
+    <div id="eval-container"><div id="eval-fill"></div></div>
 
     <div class="board-area">
         <div id="mat-top" class="material-badge"></div>
@@ -68,7 +68,7 @@
     
     <div id="sidebar">
         <div class="controls-bar">
-            <button onclick="openManager()" style="background: #e2e8f0; color: #1a202c; font-weight: bold;">🏆 Game Manager & Leaderboard</button>
+            <button onclick="openManager()" style="background: #e2e8f0; color: #1a202c; font-weight: bold;">🏆 Game Manager & Analytics</button>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 10px; gap: 5px;">
                 <span id="current-game-label" style="color:#a0aec0; font-size:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">Viewing: live.pgn</span>
                 <button class="btn-outline" onclick="toggleFlip()">Flip 🔃</button>
@@ -90,6 +90,7 @@
                 <div class="tabs" style="display:flex; gap:5px; flex:1;">
                     <button id="tab-games" class="active" onclick="switchTab('games')">📚 Archive</button>
                     <button id="tab-leader" onclick="switchTab('leader')">🏅 Leaderboard</button>
+                    <button id="tab-matrix" onclick="switchTab('matrix')">🧮 Head-to-Head</button>
                 </div>
                 <button class="btn-danger" onclick="closeManager()" style="flex:0;">Close</button>
             </div>
@@ -97,9 +98,30 @@
         </div>
     </div>
 
+    <div id="edit-player-overlay">
+        <div class="mini-modal">
+            <h3 style="margin-top:0;">Edit Players</h3>
+            <div style="margin-bottom: 10px;">
+                <label>White Player:</label>
+                <input id="edit-w-input" list="known-players" style="width:100%; box-sizing:border-box; margin-top:5px;">
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label>Black Player:</label>
+                <input id="edit-b-input" list="known-players" style="width:100%; box-sizing:border-box; margin-top:5px;">
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button style="flex:1;" onclick="submitPlayerEdit()">Save</button>
+                <button class="btn-danger" style="flex:1;" onclick="closePlayerEdit()">Cancel</button>
+            </div>
+            <input type="hidden" id="edit-target-file">
+            <datalist id="known-players"></datalist>
+        </div>
+    </div>
+
     <script>
         const IS_ANALYSIS = window.location.pathname === '/analysis';
-        let totalPlies = 0, currentViewPly = -1, lastMovesData = [], isFlipped = false, currentGameFile = 'live.pgn';
+        let totalPlies = 0, currentViewPly = -1, lastMovesData = [];
+        let isFlipped = false, currentGameFile = 'live.pgn', currentBestMove = null;
 
         // UI Setup
         document.getElementById('mode-toggle-btn').innerText = IS_ANALYSIS ? 'Live View' : 'Analyze Engine';
@@ -114,12 +136,12 @@
         function loadGame(filename) {
             currentGameFile = filename;
             document.getElementById('current-game-label').innerText = `Viewing: ${filename}`;
-            totalPlies = 0; currentViewPly = -1;
+            totalPlies = 0; currentViewPly = -1; currentBestMove = null;
             closeManager(); updateBoard(); fetchState();
         }
 
         function viewPly(ply) {
-            currentViewPly = ply;
+            currentViewPly = ply; currentBestMove = null;
             updateBoard(); renderMovesList(); renderMaterial();
             if (IS_ANALYSIS) {
                 let moveObj = lastMovesData.find(m => m.ply === ply);
@@ -129,7 +151,8 @@
 
         function updateBoard() {
             const target = (currentViewPly === -1) ? '' : `&ply=${currentViewPly}`;
-            fetch(`/board.svg?file=${currentGameFile}${target}&flipped=${isFlipped}&t=${Date.now()}`)
+            const bm = (IS_ANALYSIS && currentBestMove) ? `&bestmove=${encodeURIComponent(currentBestMove)}` : '';
+            fetch(`/board.svg?file=${currentGameFile}${target}&flipped=${isFlipped}${bm}&t=${Date.now()}`)
                 .then(r => r.text()).then(svg => document.getElementById('board-container').innerHTML = svg);
         }
 
@@ -177,6 +200,10 @@
                 document.getElementById('engine-eval').innerText = data.mate ? `M${data.mate}` : (score > 0 ? `+${score.toFixed(2)}` : score.toFixed(2));
                 document.getElementById('engine-best').innerText = data.san;
                 
+                // Trigger an arrow render
+                currentBestMove = data.san;
+                updateBoard();
+                
                 let pct = Math.max(0, Math.min(100, 50 + (score * 10)));
                 let fill = document.getElementById('eval-fill'), container = document.getElementById('eval-container');
                 if (isFlipped) { fill.style.height = `${100 - pct}%`; fill.style.background = '#333'; container.style.background = '#f0d9b5'; } 
@@ -191,6 +218,7 @@
                     if (data.total_plies !== totalPlies) {
                         totalPlies = data.total_plies; lastMovesData = data.moves;
                         if (currentViewPly === -1) {
+                            currentBestMove = null;
                             updateBoard(); renderMovesList(); renderMaterial();
                             const c = document.getElementById('moves-container'); c.scrollTop = c.scrollHeight;
                             if (IS_ANALYSIS && lastMovesData.length > 0) analyzePosition(lastMovesData[lastMovesData.length - 1].fen);
@@ -199,67 +227,135 @@
                 }).catch(()=>{});
         }
 
-        // --- Manager UI ---
-        function openManager() { document.getElementById('modal-overlay').style.display = 'flex'; switchTab('games'); }
+        // --- Manager UI & Analytics ---
+        function openManager() { 
+            document.getElementById('modal-overlay').style.display = 'flex'; 
+            fetch('/api/games').then(r=>r.json()).then(games => {
+                window.allGames = games; // Cache globally for tabs to process
+                updateDatalist();
+                switchTab('games');
+            });
+        }
         function closeManager() { document.getElementById('modal-overlay').style.display = 'none'; }
         
+        function updateDatalist() {
+            let pSet = new Set();
+            window.allGames.forEach(g => { pSet.add(g.white); pSet.add(g.black); });
+            let dl = document.getElementById('known-players'); dl.innerHTML = '';
+            Array.from(pSet).sort().forEach(p => { if (p !== 'Unknown') dl.innerHTML += `<option value="${p}">`; });
+        }
+
         function switchTab(tab) {
-            document.getElementById('tab-games').classList.remove('active'); document.getElementById('tab-leader').classList.remove('active');
+            ['games', 'leader', 'matrix'].forEach(t => document.getElementById(`tab-${t}`).classList.remove('active'));
             document.getElementById(`tab-${tab}`).classList.add('active');
             const body = document.getElementById('modal-body-content'); body.innerHTML = "<h2>Loading...</h2>";
             
             if (tab === 'games') {
-                fetch('/api/games').then(r=>r.json()).then(games => {
-                    let html = `<table><tr><th>File</th><th>White</th><th>Black</th><th>Result</th><th>Notes</th><th>Actions</th></tr>`;
-                    games.forEach(g => {
-                        let fav = g.is_favorite ? '⭐' : '☆', notes = '';
-                        if (g.is_checkmate) notes += '<span style="color:#48bb78" title="Checkmate">#️⃣</span> ';
-                        if (g.is_empty) notes += '<span style="color:#e53e3e" title="Empty Game">∅</span>';
-                        html += `<tr><td style="cursor:pointer; color:#63b3ed;" onclick="loadGame('${g.filename}')">${g.filename}</td>
-                            <td>${g.white}</td><td>${g.black}</td><td>${g.result}</td><td>${notes}</td>
-                            <td class="action-icons">
-                                <span onclick="apiAction('favorite', '${g.filename}')">${fav}</span>
-                                <span onclick="apiAction('edit_players', '${g.filename}', '${g.white}', '${g.black}')">✏️</span>
-                                <span onclick="apiAction('rename', '${g.filename}')">🏷️</span>
-                                <span onclick="apiAction('delete', '${g.filename}')" style="color:red;">❌</span>
-                            </td></tr>`;
-                    });
-                    body.innerHTML = html + "</table>";
+                let html = `<table><tr><th>File</th><th>White</th><th>Black</th><th>Result</th><th>Notes</th><th>Actions</th></tr>`;
+                window.allGames.forEach(g => {
+                    let fav = g.is_favorite ? '⭐' : '☆', notes = '';
+                    if (g.is_checkmate) notes += '<span style="color:#48bb78" title="Checkmate">#️⃣</span> ';
+                    if (g.is_empty) notes += '<span style="color:#e53e3e" title="Empty Game">∅</span>';
+                    html += `<tr><td style="cursor:pointer; color:#63b3ed;" onclick="loadGame('${g.filename}')">${g.filename}</td>
+                        <td>${g.white}</td><td>${g.black}</td><td>${g.result}</td><td>${notes}</td>
+                        <td class="action-icons">
+                            <span onclick="apiAction('favorite', '${g.filename}')">${fav}</span>
+                            <span onclick="openPlayerEdit('${g.filename}', '${g.white}', '${g.black}')">✏️</span>
+                            <span onclick="apiAction('rename', '${g.filename}')">🏷️</span>
+                            <span onclick="apiAction('delete', '${g.filename}')" style="color:red;">❌</span>
+                        </td></tr>`;
                 });
-            } else {
-                fetch('/api/leaderboard').then(r=>r.json()).then(data => {
-                    let html = `<div style="display:flex; gap:10px; margin-bottom: 20px;">
-                        <button class="btn-outline" onclick="renderLeaderboard(9999)">All Time</button>
-                        <button class="btn-outline" onclick="renderLeaderboard(14)">Last 14 Days</button>
-                        <button class="btn-outline" onclick="renderLeaderboard(1)">Last 24 Hours</button>
-                    </div><div id="leader-table"></div>`;
-                    body.innerHTML = html; window.leaderData = data; renderLeaderboard(9999);
-                });
+                body.innerHTML = html + "</table>";
+            } else if (tab === 'leader') {
+                body.innerHTML = `<div style="display:flex; gap:10px; margin-bottom: 20px;">
+                    <button class="btn-outline" onclick="renderLeaderboard(9999)">All Time</button>
+                    <button class="btn-outline" onclick="renderLeaderboard(14)">Last 14 Days</button>
+                    <button class="btn-outline" onclick="renderLeaderboard(1)">Last 24 Hours</button>
+                </div><div id="analytics-table"></div>`;
+                renderLeaderboard(9999);
+            } else if (tab === 'matrix') {
+                renderMatrix();
             }
         }
 
         function renderLeaderboard(days) {
             const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
-            let players = window.leaderData.current, activePlayers = new Set();
-            if (days < 9999) {
-                window.leaderData.history.forEach(h => {
-                    let date = new Date(h.date.replace(/\./g, '-'));
-                    if (date >= cutoff) { activePlayers.add(h.white); activePlayers.add(h.black); }
-                });
-            } else { activePlayers = new Set(Object.keys(players)); }
+            let stats = {};
+            
+            window.allGames.forEach(g => {
+                if (g.is_empty || g.result === '*') return;
+                let date = new Date(g.date_played.replace(/\./g, '-'));
+                if (days < 9999 && date < cutoff) return;
+                
+                if(!stats[g.white]) stats[g.white] = {pts:0, w:0, l:0, d:0};
+                if(!stats[g.black]) stats[g.black] = {pts:0, w:0, l:0, d:0};
+                
+                // Standard Points: Win=1, Draw=0.5
+                if (g.result === '1-0') { stats[g.white].pts += 1; stats[g.white].w += 1; stats[g.black].l += 1; } 
+                else if (g.result === '0-1') { stats[g.black].pts += 1; stats[g.black].w += 1; stats[g.white].l += 1; } 
+                else if (g.result === '1/2-1/2') { stats[g.white].pts += 0.5; stats[g.white].d += 1; stats[g.black].pts += 0.5; stats[g.black].d += 1; }
+            });
 
-            let sorted = Array.from(activePlayers).map(p => ({name: p, elo: Math.round(players[p])})).sort((a,b) => b.elo - a.elo);
-            let html = `<table><tr><th>Rank</th><th>Player</th><th>ELO Rating</th></tr>`;
-            sorted.forEach((p, i) => { html += `<tr><td>#${i+1}</td><td>${p.name}</td><td style="font-size:1.2rem; font-weight:bold; color:#f6e05e;">${p.elo}</td></tr>`; });
-            document.getElementById('leader-table').innerHTML = html + "</table>";
+            let sorted = Object.keys(stats).map(p => ({name: p, ...stats[p]})).sort((a,b) => b.pts - a.pts);
+            let html = `<table><tr><th>Rank</th><th>Player</th><th>Points</th><th>Record (W-L-D)</th></tr>`;
+            sorted.forEach((p, i) => { html += `<tr><td>#${i+1}</td><td>${p.name}</td><td style="color:#f6e05e; font-weight:bold;">${p.pts}</td><td><span style="color:#48bb78">${p.w}</span>-<span style="color:#f56565">${p.l}</span>-<span style="color:#a0aec0">${p.d}</span></td></tr>`; });
+            document.getElementById('analytics-table').innerHTML = html + "</table>";
         }
 
-        function apiAction(action, filename, w, b) {
+        function renderMatrix() {
+            let matrix = {}, players = new Set();
+            window.allGames.forEach(g => {
+                if (g.is_empty || g.result === '*') return;
+                players.add(g.white); players.add(g.black);
+                if(!matrix[g.white]) matrix[g.white] = {}; if(!matrix[g.black]) matrix[g.black] = {};
+                if(!matrix[g.white][g.black]) matrix[g.white][g.black] = {w:0, l:0, d:0};
+                if(!matrix[g.black][g.white]) matrix[g.black][g.white] = {w:0, l:0, d:0};
+                
+                if(g.result === '1-0') { matrix[g.white][g.black].w++; matrix[g.black][g.white].l++; } 
+                else if (g.result === '0-1') { matrix[g.white][g.black].l++; matrix[g.black][g.white].w++; } 
+                else if (g.result === '1/2-1/2') { matrix[g.white][g.black].d++; matrix[g.black][g.white].d++; }
+            });
+            
+            let pArr = Array.from(players).sort();
+            let html = `<div style="overflow-x:auto;"><table><tr><th>Matchups (W-L-D)</th>`;
+            pArr.forEach(p => html += `<th>${p}</th>`); html += `</tr>`;
+            
+            pArr.forEach(rowP => {
+                html += `<tr><th>${rowP}</th>`;
+                pArr.forEach(colP => {
+                    if (rowP === colP) { html += `<td style="background:#111;">-</td>`; } 
+                    else {
+                        let r = matrix[rowP][colP];
+                        html += r ? `<td><span style="color:#48bb78">${r.w}</span>-<span style="color:#f56565">${r.l}</span>-<span style="color:#a0aec0">${r.d}</span></td>` : `<td>0-0-0</td>`;
+                    }
+                });
+                html += `</tr>`;
+            });
+            document.getElementById('modal-body-content').innerHTML = html + `</table></div>`;
+        }
+
+        // --- Custom Combobox Editing ---
+        function openPlayerEdit(filename, w, b) {
+            document.getElementById('edit-target-file').value = filename;
+            document.getElementById('edit-w-input').value = w;
+            document.getElementById('edit-b-input').value = b;
+            document.getElementById('edit-player-overlay').style.display = 'flex';
+        }
+        function closePlayerEdit() { document.getElementById('edit-player-overlay').style.display = 'none'; }
+        function submitPlayerEdit() {
+            let f = document.getElementById('edit-target-file').value;
+            let w = document.getElementById('edit-w-input').value;
+            let b = document.getElementById('edit-b-input').value;
+            if(!w || !b) return;
+            fetch('/api/game/update', { method: 'POST', body: JSON.stringify({action:'edit_players', filename:f, white:w, black:b}) })
+                .then(() => { closePlayerEdit(); openManager(); }); // Refresh cache and UI
+        }
+
+        function apiAction(action, filename) {
             let payload = { action, filename };
             if (action === 'delete' && !confirm(`Delete ${filename}?`)) return;
             if (action === 'rename') { let nn = prompt("New filename:"); if (!nn) return; payload.new_name = nn; }
-            if (action === 'edit_players') { let nw = prompt("White:", w), nb = prompt("Black:", b); if (!nw || !nb) return; payload.white = nw; payload.black = nb; }
-            fetch('/api/game/update', { method: 'POST', body: JSON.stringify(payload) }).then(() => switchTab('games'));
+            fetch('/api/game/update', { method: 'POST', body: JSON.stringify(payload) }).then(() => openManager());
         }
 
         document.addEventListener('keydown', (e) => {

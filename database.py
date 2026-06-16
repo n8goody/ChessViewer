@@ -32,27 +32,40 @@ def sync_pgns_to_db():
     
     for f in files:
         filename = os.path.basename(f)
-        c.execute("SELECT filename FROM games WHERE filename=?", (filename,))
-        if not c.fetchone():
-            try:
-                with open(f, "r") as pgn_file:
-                    game = chess.pgn.read_game(pgn_file)
-                if game:
+        
+        # Parse the file to check for data
+        try:
+            with open(f, "r") as pgn_file:
+                game = chess.pgn.read_game(pgn_file)
+            
+            if game:
+                node = game.end()
+                is_empty = node.board().ply() == 0
+                
+                # FEATURE: Delete empty PGN files permanently (ignore live.pgn)
+                if is_empty and filename != "live.pgn":
+                    try:
+                        os.remove(f)
+                        c.execute("DELETE FROM games WHERE filename=?", (filename,))
+                    except OSError: pass
+                    continue
+                
+                # Check if it needs to be added to DB
+                c.execute("SELECT filename FROM games WHERE filename=?", (filename,))
+                if not c.fetchone():
                     white = game.headers.get("White", "Unknown")
                     black = game.headers.get("Black", "Unknown")
                     result = game.headers.get("Result", "*")
                     date_str = game.headers.get("Date", datetime.datetime.now().strftime("%Y.%m.%d"))
-                    
-                    node = game.end()
-                    is_empty = node.board().ply() == 0
                     is_checkmate = node.board().is_checkmate()
                     
                     c.execute('''INSERT INTO games 
                         (filename, white, black, result, date_played, is_empty, is_checkmate) 
                         VALUES (?, ?, ?, ?, ?, ?, ?)''', 
                         (filename, white, black, result, date_str, is_empty, is_checkmate))
-            except Exception as e:
-                print(f"Error parsing {filename}: {e}")
+        except Exception as e:
+            print(f"Error parsing {filename}: {e}")
+            
     conn.commit()
     conn.close()
 
@@ -71,11 +84,11 @@ def update_game_action(post_data):
     conn = init_db()
     c = conn.cursor()
     
-    if action == "favorite":
-        c.execute("UPDATE games SET is_favorite = NOT is_favorite WHERE filename=?", (filename,))
-    elif action == "edit_players":
+    if action == "edit_players":
         c.execute("UPDATE games SET white=?, black=? WHERE filename=?", 
                   (post_data.get("white"), post_data.get("black"), filename))
+    elif action == "favorite":
+        c.execute("UPDATE games SET is_favorite = NOT is_favorite WHERE filename=?", (filename,))
     elif action == "delete":
         c.execute("DELETE FROM games WHERE filename=?", (filename,))
         try: os.remove(get_actual_path(filename))
@@ -89,33 +102,3 @@ def update_game_action(post_data):
 
     conn.commit()
     conn.close()
-
-def calculate_elo_leaderboards():
-    conn = init_db()
-    c = conn.cursor()
-    c.execute("SELECT white, black, result, date_played FROM games WHERE is_empty=0 ORDER BY date_played ASC")
-    games = c.fetchall()
-    conn.close()
-
-    players, history = {}, []
-    for white, black, result, date_played in games:
-        if white not in players: players[white] = 1200
-        if black not in players: players[black] = 1200
-
-        rW, rB = players[white], players[black]
-        eW = 1 / (1 + 10 ** ((rB - rW) / 400))
-        eB = 1 / (1 + 10 ** ((rW - rB) / 400))
-
-        sW, sB = 0.5, 0.5
-        if result == "1-0": sW, sB = 1.0, 0.0
-        elif result == "0-1": sW, sB = 0.0, 1.0
-        elif result == "*": continue
-
-        players[white] += 32 * (sW - eW)
-        players[black] += 32 * (sB - eB)
-        
-        history.append({
-            "date": date_played, "white": white, "black": black, 
-            "white_elo": players[white], "black_elo": players[black]
-        })
-    return {"current": players, "history": history}
