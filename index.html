@@ -224,7 +224,7 @@
                         <div id="current-game-label" style="color:var(--text-dim); font-size:0.8rem; text-overflow:ellipsis; white-space:nowrap;"></div>
                     </div>
                     <button class="btn-outline icon-btn" onclick="openCurrentGameEdit()" title="Edit Metadata"><span class="material-symbols-outlined">edit</span></button>
-                    <button class="btn-outline icon-btn" onclick="toggleFlip()" title="Flip Board"><span class="material-symbols-outlined">sync</span></button>
+                    <button class="btn-outline icon-btn" onclick="toggleFlip()" title="Flip Board"><span class="material-symbols-outlined">screen_rotation_alt</span></button>
                 </div>
                 
                 <div style="display:flex; gap: 8px;">
@@ -408,8 +408,12 @@
             let absDiff = Math.abs(diff);
             let color = getDiffColor(absDiff);
             
-            let wText = diff > 0 ? `+${diff}` : ''; 
-            let bText = diff < 0 ? `+${absDiff}` : '';
+            let game = window.allGames.find(g => g.filename === currentGameFile);
+            let wName = game && game.white !== 'Unknown' ? game.white : 'White';
+            let bName = game && game.black !== 'Unknown' ? game.black : 'Black';
+            
+            let wText = diff > 0 ? `${wName} (+${diff})` : wName; 
+            let bText = diff < 0 ? `${bName} (+${absDiff})` : bName;
             
             const top = document.getElementById('mat-top'), bot = document.getElementById('mat-bot');
             top.style.color = 'var(--text-main)'; bot.style.color = 'var(--text-main)'; 
@@ -508,6 +512,10 @@
             fetch('/api/games').then(r=>r.json()).then(games => {
                 let isFirstLoad = window.allGames.length === 0;
                 window.allGames = games;
+                
+                if (!IS_HOME && !IS_LEADERBOARD) {
+                    renderMaterial();
+                }
                 
                 if (!IS_TV && !IS_TV_BOARD && !IS_HOME && !IS_LEADERBOARD) {
                     let needsReview = games.filter(g => g.needs_review).length;
