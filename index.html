@@ -8,31 +8,37 @@
         body { margin: 0; background: #1c1c1c; color: #e1e1e1; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
         
         .board-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2vmin; position: relative; }
-        .material-badge { background: #333; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; margin: 10px 0; font-size: 1.1rem; display: flex; justify-content: center; width: 100%; max-width: 80vh; }
+        .material-badge { background: #333; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; margin: 5px 0; font-size: 1.1rem; display: flex; justify-content: center; width: 100%; max-width: 80vh; }
         .mat-white { color: #f0d9b5; }
         .mat-black { color: #888; }
         
-        #board-container { width: 100%; height: 100%; max-height: 80vh; max-width: 80vh; display:flex; justify-content:center; }
+        #board-container { width: 100%; height: 100%; max-height: 75vh; max-width: 75vh; display:flex; justify-content:center; }
         #board-container svg { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0px 10px 30px rgba(0,0,0,0.6)); }
         
+        .on-screen-controls { display: flex; gap: 10px; margin-top: 10px; width: 100%; max-width: 80vh; justify-content: center; }
+        .on-screen-controls button { font-size: 1.5rem; padding: 10px 20px; background: #333; border-radius: 8px; }
+        .on-screen-controls button:hover { background: #555; }
+
         #sidebar { width: 350px; background: #242424; display: flex; flex-direction: column; border-left: 1px solid #333; z-index: 10; }
-        .controls-bar { padding: 15px; background: #111; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #333; }
+        .controls-bar { padding: 15px; background: #111; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #333; position: relative; }
         button, input, select { background: #2a5c8a; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 0.95rem; }
         button:hover { background: #3b76ad; }
         .btn-danger { background: #c53030; } .btn-danger:hover { background: #9b2c2c; }
         .btn-outline { background: transparent; border: 1px solid #555; } .btn-outline:hover { background: #333; }
         
+        .notification-dot { position: absolute; top: 10px; right: 10px; background: #e53e3e; color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.8rem; font-weight: bold; display: none; }
+
         #moves-container { flex: 1; padding: 15px 20px; overflow-y: auto; font-size: 1.15rem; line-height: 2; }
         .turn-number { color: #666; font-size: 0.85em; margin-right: 5px; }
         .move-span { cursor: pointer; padding: 3px 6px; border-radius: 4px; transition: background 0.1s; }
         .move-span:hover { background: #444; }
         .move-active { background: #2a5c8a !important; color: white; }
+        .blunder { background: #c53030 !important; color: white; } /* Highlight big swings */
 
         /* Full Screen Modals */
-        #modal-overlay, #edit-player-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 100; }
-        #edit-player-overlay { z-index: 200; }
-        .modal-content { background: #242424; width: 90%; max-width: 900px; height: 80vh; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #444; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
-        .mini-modal { width: 350px; height: auto; padding: 20px; border-radius: 8px; background: #1c1c1c; border: 1px solid #444;}
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 100; }
+        .modal-content { background: #242424; width: 90%; max-width: 900px; height: 80vh; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #444; }
+        .mini-modal { width: 350px; padding: 20px; border-radius: 8px; background: #1c1c1c; border: 1px solid #444; }
         .modal-header { padding: 15px 20px; background: #111; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
         .tabs button { flex: 1; border-radius: 0; background: #333; } .tabs button.active { background: #2a5c8a; }
         .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
@@ -48,6 +54,9 @@
         #eval-fill { width: 100%; background: #f0d9b5; height: 50%; transition: height 0.5s ease-in-out; }
         #engine-readout { display: none; padding: 10px; background: #1a365d; font-size: 0.9rem; border-bottom: 1px solid #333; }
         .best-move { color: #63b3ed; font-weight: bold; font-size: 1.1rem; }
+        
+        /* Raw Editor */
+        #raw-pgn-textarea { width: 100%; height: 100%; background: #111; color: #e1e1e1; font-family: monospace; border: none; padding: 10px; box-sizing: border-box; resize: none; }
 
         @media (max-width: 768px) {
             body { flex-direction: column; overflow: auto; }
@@ -63,16 +72,26 @@
     <div class="board-area">
         <div id="mat-top" class="material-badge"></div>
         <div id="board-container"></div>
+        <div class="on-screen-controls">
+            <button onclick="controlArrow('left')">⬅️</button>
+            <button onclick="controlArrow('right')">➡️</button>
+        </div>
         <div id="mat-bot" class="material-badge"></div>
     </div>
     
     <div id="sidebar">
         <div class="controls-bar">
             <button onclick="openManager()" style="background: #e2e8f0; color: #1a202c; font-weight: bold;">🏆 Game Manager & Analytics</button>
+            <div id="review-dot" class="notification-dot">!</div>
+            
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 10px; gap: 5px;">
-                <span id="current-game-label" style="color:#a0aec0; font-size:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">Viewing: live.pgn</span>
+                <span id="current-game-label" style="color:#a0aec0; font-size:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;"></span>
                 <button class="btn-outline" onclick="toggleFlip()">Flip 🔃</button>
                 <button id="mode-toggle-btn" class="btn-outline"></button>
+            </div>
+            <div style="display:flex; gap: 5px;">
+                <button id="edit-raw-btn" class="btn-outline" style="flex:1;" onclick="openRawEditor()">✏️ Edit PGN</button>
+                <button id="deep-analyze-btn" style="flex:1; display:none; background:#48bb78;" onclick="runFullAnalysis()">🔍 Analyze Blunders</button>
             </div>
         </div>
 
@@ -84,7 +103,7 @@
         <div id="moves-container">Loading...</div>
     </div>
 
-    <div id="modal-overlay">
+    <div id="modal-overlay" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
                 <div class="tabs" style="display:flex; gap:5px; flex:1;">
@@ -98,45 +117,85 @@
         </div>
     </div>
 
-    <div id="edit-player-overlay">
+    <div id="edit-meta-overlay" class="modal-overlay" style="z-index: 200;">
         <div class="mini-modal">
-            <h3 style="margin-top:0;">Edit Players</h3>
+            <h3 style="margin-top:0;">Update Game Data</h3>
             <div style="margin-bottom: 10px;">
                 <label>White Player:</label>
                 <input id="edit-w-input" list="known-players" style="width:100%; box-sizing:border-box; margin-top:5px;">
             </div>
-            <div style="margin-bottom: 20px;">
+            <div style="margin-bottom: 10px;">
                 <label>Black Player:</label>
                 <input id="edit-b-input" list="known-players" style="width:100%; box-sizing:border-box; margin-top:5px;">
             </div>
+            <div style="margin-bottom: 20px;">
+                <label>Result:</label>
+                <select id="edit-res-input" style="width:100%; box-sizing:border-box; margin-top:5px;">
+                    <option value="*">Ongoing (*)</option>
+                    <option value="1-0">White Wins (1-0)</option>
+                    <option value="0-1">Black Wins (0-1)</option>
+                    <option value="1/2-1/2">Draw (1/2-1/2)</option>
+                </select>
+            </div>
             <div style="display:flex; gap:10px;">
-                <button style="flex:1;" onclick="submitPlayerEdit()">Save</button>
-                <button class="btn-danger" style="flex:1;" onclick="closePlayerEdit()">Cancel</button>
+                <button style="flex:1;" onclick="submitMetaEdit()">Save</button>
+                <button class="btn-danger" style="flex:1;" onclick="closeMetaEdit()">Cancel</button>
             </div>
             <input type="hidden" id="edit-target-file">
             <datalist id="known-players"></datalist>
         </div>
     </div>
+    
+    <div id="raw-editor-overlay" class="modal-overlay" style="z-index: 200;">
+        <div class="modal-content" style="max-width: 600px; height: 60vh;">
+            <div class="modal-header">
+                <h3>Raw PGN Editor</h3>
+                <div style="display:flex; gap: 5px;">
+                    <button style="background:#48bb78;" onclick="saveRawPGN()">Save</button>
+                    <button class="btn-danger" onclick="closeRawEditor()">Cancel</button>
+                </div>
+            </div>
+            <textarea id="raw-pgn-textarea"></textarea>
+        </div>
+    </div>
 
     <script>
         const IS_ANALYSIS = window.location.pathname === '/analysis';
+        
+        // --- URL Tracking Feature ---
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentGameFile = urlParams.get('file') || 'live.pgn';
+        
         let totalPlies = 0, currentViewPly = -1, lastMovesData = [];
-        let isFlipped = false, currentGameFile = 'live.pgn', currentBestMove = null;
+        let isFlipped = false, currentBestMove = null, evalCache = {};
 
         // UI Setup
         document.getElementById('mode-toggle-btn').innerText = IS_ANALYSIS ? 'Live View' : 'Analyze Engine';
-        document.getElementById('mode-toggle-btn').onclick = () => window.location.href = IS_ANALYSIS ? '/' : '/analysis';
+        document.getElementById('mode-toggle-btn').onclick = () => window.location.href = IS_ANALYSIS ? `/?file=${currentGameFile}` : `/analysis?file=${currentGameFile}`;
+        document.getElementById('current-game-label').innerText = `Viewing: ${currentGameFile}`;
+        document.getElementById('edit-raw-btn').style.display = (currentGameFile === 'live.pgn') ? 'none' : 'block';
+        
         if (IS_ANALYSIS) {
             document.getElementById('eval-container').style.display = 'flex';
             document.getElementById('engine-readout').style.display = 'block';
+            document.getElementById('deep-analyze-btn').style.display = 'block';
         }
 
+        // --- Core Interactions ---
         function toggleFlip() { isFlipped = !isFlipped; updateBoard(); renderMaterial(); }
+        function controlArrow(dir) {
+            let current = (currentViewPly === -1) ? totalPlies : currentViewPly;
+            if (dir === 'left' && current > 0) viewPly(current - 1);
+            else if (dir === 'right' && current < totalPlies) viewPly(current + 1);
+        }
 
         function loadGame(filename) {
             currentGameFile = filename;
+            history.pushState(null, '', `?file=${filename}`); // Update URL without reloading
+            
             document.getElementById('current-game-label').innerText = `Viewing: ${filename}`;
-            totalPlies = 0; currentViewPly = -1; currentBestMove = null;
+            document.getElementById('edit-raw-btn').style.display = (filename === 'live.pgn') ? 'none' : 'block';
+            totalPlies = 0; currentViewPly = -1; currentBestMove = null; evalCache = {};
             closeManager(); updateBoard(); fetchState();
         }
 
@@ -145,7 +204,7 @@
             updateBoard(); renderMovesList(); renderMaterial();
             if (IS_ANALYSIS) {
                 let moveObj = lastMovesData.find(m => m.ply === ply);
-                if (moveObj) analyzePosition(moveObj.fen);
+                if (moveObj) analyzePosition(moveObj.fen, moveObj.ply);
             }
         }
 
@@ -180,10 +239,15 @@
             for(let i = 1; i < lastMovesData.length; i += 2) {
                 let turn = Math.floor(i / 2) + 1, white = lastMovesData[i], black = lastMovesData[i+1];
                 html += `<div><span class="turn-number">${turn}.</span>`;
-                let wClass = (white.ply === activePly) ? 'move-active' : '';
+                
+                // Colorize blunders if evalCache knows about them
+                let wErr = evalCache[white.ply]?.isBlunder ? 'blunder' : '';
+                let wClass = (white.ply === activePly) ? 'move-active' : wErr;
                 html += `<span class="move-span ${wClass}" onclick="viewPly(${white.ply})">${white.san}</span> `;
+                
                 if (black) {
-                    let bClass = (black.ply === activePly) ? 'move-active' : '';
+                    let bErr = evalCache[black.ply]?.isBlunder ? 'blunder' : '';
+                    let bClass = (black.ply === activePly) ? 'move-active' : bErr;
                     html += `<span class="move-span ${bClass}" onclick="viewPly(${black.ply})">${black.san}</span>`;
                 }
                 html += `</div>`;
@@ -191,26 +255,55 @@
             document.getElementById('moves-container').innerHTML = html;
         }
 
-        function analyzePosition(fen) {
+        // --- Analysis Engine ---
+        function analyzePosition(fen, ply) {
             if (!fen) return;
             document.getElementById('engine-eval').innerText = "Calc...";
-            fetch("https://chess-api.com/v1", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fen: fen, depth: 10 }) })
+            return fetch("https://chess-api.com/v1", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fen: fen, depth: 10 }) })
             .then(r => r.json()).then(data => {
                 let score = data.mate ? (data.mate > 0 ? 10 : -10) : (data.eval / 100);
+                
+                // Cache for deep analysis
+                if(ply !== undefined) evalCache[ply] = { score: score, isBlunder: false };
+                
                 document.getElementById('engine-eval').innerText = data.mate ? `M${data.mate}` : (score > 0 ? `+${score.toFixed(2)}` : score.toFixed(2));
                 document.getElementById('engine-best').innerText = data.san;
                 
-                // Trigger an arrow render
-                currentBestMove = data.san;
-                updateBoard();
+                currentBestMove = data.san; updateBoard();
                 
                 let pct = Math.max(0, Math.min(100, 50 + (score * 10)));
                 let fill = document.getElementById('eval-fill'), container = document.getElementById('eval-container');
                 if (isFlipped) { fill.style.height = `${100 - pct}%`; fill.style.background = '#333'; container.style.background = '#f0d9b5'; } 
                 else { fill.style.height = `${pct}%`; fill.style.background = '#f0d9b5'; container.style.background = '#333'; }
+                return score;
             });
         }
 
+        async function runFullAnalysis() {
+            let btn = document.getElementById('deep-analyze-btn');
+            btn.innerText = "Analyzing..."; btn.style.background = "#e53e3e";
+            
+            for (let i = 1; i < lastMovesData.length; i++) {
+                let move = lastMovesData[i];
+                if (!evalCache[move.ply]) {
+                    btn.innerText = `Analyzing ${move.ply}/${totalPlies}`;
+                    await analyzePosition(move.fen, move.ply);
+                }
+                
+                // Compare to previous move to detect blunder
+                let prevScore = evalCache[move.ply - 1]?.score || 0;
+                let currScore = evalCache[move.ply].score;
+                let shift = currScore - prevScore;
+                
+                // White moved (shift goes negative = bad). Black moved (shift goes positive = bad).
+                if (move.ply % 2 !== 0 && shift < -2.0) evalCache[move.ply].isBlunder = true; // White blunder
+                if (move.ply % 2 === 0 && shift > 2.0) evalCache[move.ply].isBlunder = true;  // Black blunder
+            }
+            btn.innerText = "Analysis Complete"; btn.style.background = "#333";
+            renderMovesList(); // Re-render to show red highlights
+        }
+
+        // --- Polling ---
         function fetchState() {
             fetch(`/game-data?file=${currentGameFile}&t=${Date.now()}`)
                 .then(r => r.json()).then(data => {
@@ -221,17 +314,25 @@
                             currentBestMove = null;
                             updateBoard(); renderMovesList(); renderMaterial();
                             const c = document.getElementById('moves-container'); c.scrollTop = c.scrollHeight;
-                            if (IS_ANALYSIS && lastMovesData.length > 0) analyzePosition(lastMovesData[lastMovesData.length - 1].fen);
+                            if (IS_ANALYSIS && lastMovesData.length > 0) analyzePosition(lastMovesData[lastMovesData.length - 1].fen, lastMovesData[lastMovesData.length - 1].ply);
                         } else renderMovesList();
                     }
                 }).catch(()=>{});
+                
+            // Check for notifications
+            fetch('/api/games').then(r=>r.json()).then(games => {
+                let needsReview = games.filter(g => g.needs_review).length;
+                let dot = document.getElementById('review-dot');
+                if (needsReview > 0) { dot.style.display = 'block'; dot.innerText = needsReview; } 
+                else { dot.style.display = 'none'; }
+            });
         }
 
         // --- Manager UI & Analytics ---
         function openManager() { 
             document.getElementById('modal-overlay').style.display = 'flex'; 
             fetch('/api/games').then(r=>r.json()).then(games => {
-                window.allGames = games; // Cache globally for tabs to process
+                window.allGames = games; 
                 updateDatalist();
                 switchTab('games');
             });
@@ -255,117 +356,17 @@
                 window.allGames.forEach(g => {
                     let fav = g.is_favorite ? '⭐' : '☆', notes = '';
                     if (g.is_checkmate) notes += '<span style="color:#48bb78" title="Checkmate">#️⃣</span> ';
-                    if (g.is_empty) notes += '<span style="color:#e53e3e" title="Empty Game">∅</span>';
-                    html += `<tr><td style="cursor:pointer; color:#63b3ed;" onclick="loadGame('${g.filename}')">${g.filename}</td>
+                    if (g.needs_review) notes += '<span style="color:#e53e3e; font-weight:bold;">Review Needed!</span> ';
+                    
+                    html += `<tr style="${g.needs_review ? 'background: #2d1818;' : ''}">
+                        <td style="cursor:pointer; color:#63b3ed;" onclick="loadGame('${g.filename}')">${g.filename}</td>
                         <td>${g.white}</td><td>${g.black}</td><td>${g.result}</td><td>${notes}</td>
                         <td class="action-icons">
                             <span onclick="apiAction('favorite', '${g.filename}')">${fav}</span>
-                            <span onclick="openPlayerEdit('${g.filename}', '${g.white}', '${g.black}')">✏️</span>
+                            <span onclick="openMetaEdit('${g.filename}', '${g.white}', '${g.black}', '${g.result}')">✏️</span>
                             <span onclick="apiAction('rename', '${g.filename}')">🏷️</span>
                             <span onclick="apiAction('delete', '${g.filename}')" style="color:red;">❌</span>
                         </td></tr>`;
                 });
                 body.innerHTML = html + "</table>";
-            } else if (tab === 'leader') {
-                body.innerHTML = `<div style="display:flex; gap:10px; margin-bottom: 20px;">
-                    <button class="btn-outline" onclick="renderLeaderboard(9999)">All Time</button>
-                    <button class="btn-outline" onclick="renderLeaderboard(14)">Last 14 Days</button>
-                    <button class="btn-outline" onclick="renderLeaderboard(1)">Last 24 Hours</button>
-                </div><div id="analytics-table"></div>`;
-                renderLeaderboard(9999);
-            } else if (tab === 'matrix') {
-                renderMatrix();
-            }
-        }
-
-        function renderLeaderboard(days) {
-            const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
-            let stats = {};
-            
-            window.allGames.forEach(g => {
-                if (g.is_empty || g.result === '*') return;
-                let date = new Date(g.date_played.replace(/\./g, '-'));
-                if (days < 9999 && date < cutoff) return;
-                
-                if(!stats[g.white]) stats[g.white] = {pts:0, w:0, l:0, d:0};
-                if(!stats[g.black]) stats[g.black] = {pts:0, w:0, l:0, d:0};
-                
-                // Standard Points: Win=1, Draw=0.5
-                if (g.result === '1-0') { stats[g.white].pts += 1; stats[g.white].w += 1; stats[g.black].l += 1; } 
-                else if (g.result === '0-1') { stats[g.black].pts += 1; stats[g.black].w += 1; stats[g.white].l += 1; } 
-                else if (g.result === '1/2-1/2') { stats[g.white].pts += 0.5; stats[g.white].d += 1; stats[g.black].pts += 0.5; stats[g.black].d += 1; }
-            });
-
-            let sorted = Object.keys(stats).map(p => ({name: p, ...stats[p]})).sort((a,b) => b.pts - a.pts);
-            let html = `<table><tr><th>Rank</th><th>Player</th><th>Points</th><th>Record (W-L-D)</th></tr>`;
-            sorted.forEach((p, i) => { html += `<tr><td>#${i+1}</td><td>${p.name}</td><td style="color:#f6e05e; font-weight:bold;">${p.pts}</td><td><span style="color:#48bb78">${p.w}</span>-<span style="color:#f56565">${p.l}</span>-<span style="color:#a0aec0">${p.d}</span></td></tr>`; });
-            document.getElementById('analytics-table').innerHTML = html + "</table>";
-        }
-
-        function renderMatrix() {
-            let matrix = {}, players = new Set();
-            window.allGames.forEach(g => {
-                if (g.is_empty || g.result === '*') return;
-                players.add(g.white); players.add(g.black);
-                if(!matrix[g.white]) matrix[g.white] = {}; if(!matrix[g.black]) matrix[g.black] = {};
-                if(!matrix[g.white][g.black]) matrix[g.white][g.black] = {w:0, l:0, d:0};
-                if(!matrix[g.black][g.white]) matrix[g.black][g.white] = {w:0, l:0, d:0};
-                
-                if(g.result === '1-0') { matrix[g.white][g.black].w++; matrix[g.black][g.white].l++; } 
-                else if (g.result === '0-1') { matrix[g.white][g.black].l++; matrix[g.black][g.white].w++; } 
-                else if (g.result === '1/2-1/2') { matrix[g.white][g.black].d++; matrix[g.black][g.white].d++; }
-            });
-            
-            let pArr = Array.from(players).sort();
-            let html = `<div style="overflow-x:auto;"><table><tr><th>Matchups (W-L-D)</th>`;
-            pArr.forEach(p => html += `<th>${p}</th>`); html += `</tr>`;
-            
-            pArr.forEach(rowP => {
-                html += `<tr><th>${rowP}</th>`;
-                pArr.forEach(colP => {
-                    if (rowP === colP) { html += `<td style="background:#111;">-</td>`; } 
-                    else {
-                        let r = matrix[rowP][colP];
-                        html += r ? `<td><span style="color:#48bb78">${r.w}</span>-<span style="color:#f56565">${r.l}</span>-<span style="color:#a0aec0">${r.d}</span></td>` : `<td>0-0-0</td>`;
-                    }
-                });
-                html += `</tr>`;
-            });
-            document.getElementById('modal-body-content').innerHTML = html + `</table></div>`;
-        }
-
-        // --- Custom Combobox Editing ---
-        function openPlayerEdit(filename, w, b) {
-            document.getElementById('edit-target-file').value = filename;
-            document.getElementById('edit-w-input').value = w;
-            document.getElementById('edit-b-input').value = b;
-            document.getElementById('edit-player-overlay').style.display = 'flex';
-        }
-        function closePlayerEdit() { document.getElementById('edit-player-overlay').style.display = 'none'; }
-        function submitPlayerEdit() {
-            let f = document.getElementById('edit-target-file').value;
-            let w = document.getElementById('edit-w-input').value;
-            let b = document.getElementById('edit-b-input').value;
-            if(!w || !b) return;
-            fetch('/api/game/update', { method: 'POST', body: JSON.stringify({action:'edit_players', filename:f, white:w, black:b}) })
-                .then(() => { closePlayerEdit(); openManager(); }); // Refresh cache and UI
-        }
-
-        function apiAction(action, filename) {
-            let payload = { action, filename };
-            if (action === 'delete' && !confirm(`Delete ${filename}?`)) return;
-            if (action === 'rename') { let nn = prompt("New filename:"); if (!nn) return; payload.new_name = nn; }
-            fetch('/api/game/update', { method: 'POST', body: JSON.stringify(payload) }).then(() => openManager());
-        }
-
-        document.addEventListener('keydown', (e) => {
-            if (totalPlies === 0) return;
-            let current = (currentViewPly === -1) ? totalPlies : currentViewPly;
-            if (e.key === 'ArrowLeft' && current > 0) viewPly(current - 1);
-            else if (e.key === 'ArrowRight' && current < totalPlies) viewPly(current + 1);
-        });
-
-        setInterval(fetchState, 1000); fetchState(); updateBoard();
-    </script>
-</body>
-</html>
+            } else if (tab ===

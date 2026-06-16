@@ -49,12 +49,10 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
                         ply_count += 1
                 else: node = game.end()
                 
-                # FEATURE: Draw Best Move Arrow
                 arrows = []
                 if best_move_san:
                     try:
                         move = node.board().parse_san(best_move_san)
-                        # #48bb7899 is a translucent green arrow
                         arrows.append(chess.svg.Arrow(move.from_square, move.to_square, color="#48bb7899"))
                     except ValueError: pass
                 
@@ -68,8 +66,7 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
         elif clean_path == "/game-data":
             try:
                 with open(pgn_path, "r") as pgn_file: game = chess.pgn.read_game(pgn_file)
-                moves = []
-                ply = 0
+                moves, ply = [], 0
                 
                 def calc_material(board):
                     score = 0
@@ -99,6 +96,17 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(b'{"total_plies": 0, "moves": []}')
 
+        elif clean_path == "/api/game/raw":
+            # Serve the raw PGN text for the new editor modal
+            try:
+                with open(pgn_path, "r") as f: raw = f.read()
+                self.send_response(200)
+                self.send_header("Content-type", "text/plain")
+                self.end_headers()
+                self.wfile.write(raw.encode("utf-8"))
+            except Exception:
+                self.send_error(404)
+
         elif clean_path == "/api/games":
             self.send_response(200)
             self.send_header("Content-type", "application/json")
@@ -114,7 +122,7 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(html_content.encode("utf-8"))
             except FileNotFoundError:
-                self.send_error(404, "index.html not found in server directory")
+                self.send_error(404, "index.html not found")
 
 with socketserver.TCPServer(("", PORT), ChessHandler) as httpd:
     print(f"Serving Ultimate Homelab Chess (v2.1) on port {PORT}")

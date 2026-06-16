@@ -8,3 +8,5 @@ chess.db
 __pycache__/
 *.pyc
 *.pyo
+
+promptideas.txt
