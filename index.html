@@ -369,4 +369,118 @@
                         </td></tr>`;
                 });
                 body.innerHTML = html + "</table>";
-            } else if (tab ===
+            } else if (tab === 'leader') {
+                body.innerHTML = `<div style="display:flex; gap:10px; margin-bottom: 20px;">
+                    <button class="btn-outline" onclick="renderLeaderboard(9999)">All Time</button>
+                    <button class="btn-outline" onclick="renderLeaderboard(14)">Last 14 Days</button>
+                    <button class="btn-outline" onclick="renderLeaderboard(1)">Last 24 Hours</button>
+                </div><div id="analytics-table"></div>`;
+                renderLeaderboard(9999);
+            } else if (tab === 'matrix') {
+                renderMatrix();
+            }
+        }
+
+        function renderLeaderboard(days) {
+            const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
+            let stats = {};
+            
+            window.allGames.forEach(g => {
+                if (g.is_empty || g.result === '*') return;
+                let date = new Date(g.date_played.replace(/\./g, '-'));
+                if (days < 9999 && date < cutoff) return;
+                
+                if(!stats[g.white]) stats[g.white] = {pts:0, w:0, l:0, d:0};
+                if(!stats[g.black]) stats[g.black] = {pts:0, w:0, l:0, d:0};
+                
+                if (g.result === '1-0') { stats[g.white].pts += 1; stats[g.white].w += 1; stats[g.black].l += 1; } 
+                else if (g.result === '0-1') { stats[g.black].pts += 1; stats[g.black].w += 1; stats[g.white].l += 1; } 
+                else if (g.result === '1/2-1/2') { stats[g.white].pts += 0.5; stats[g.white].d += 1; stats[g.black].pts += 0.5; stats[g.black].d += 1; }
+            });
+
+            let sorted = Object.keys(stats).map(p => ({name: p, ...stats[p]})).sort((a,b) => b.pts - a.pts);
+            let html = `<table><tr><th>Rank</th><th>Player</th><th>Points</th><th>Record (W-L-D)</th></tr>`;
+            sorted.forEach((p, i) => { html += `<tr><td>#${i+1}</td><td>${p.name}</td><td style="color:#f6e05e; font-weight:bold;">${p.pts}</td><td><span style="color:#48bb78">${p.w}</span>-<span style="color:#f56565">${p.l}</span>-<span style="color:#a0aec0">${p.d}</span></td></tr>`; });
+            document.getElementById('analytics-table').innerHTML = html + "</table>";
+        }
+
+        function renderMatrix() {
+            let matrix = {}, players = new Set();
+            window.allGames.forEach(g => {
+                if (g.is_empty || g.result === '*') return;
+                players.add(g.white); players.add(g.black);
+                if(!matrix[g.white]) matrix[g.white] = {}; if(!matrix[g.black]) matrix[g.black] = {};
+                if(!matrix[g.white][g.black]) matrix[g.white][g.black] = {w:0, l:0, d:0};
+                if(!matrix[g.black][g.white]) matrix[g.black][g.white] = {w:0, l:0, d:0};
+                
+                if(g.result === '1-0') { matrix[g.white][g.black].w++; matrix[g.black][g.white].l++; } 
+                else if (g.result === '0-1') { matrix[g.white][g.black].l++; matrix[g.black][g.white].w++; } 
+                else if (g.result === '1/2-1/2') { matrix[g.white][g.black].d++; matrix[g.black][g.white].d++; }
+            });
+            
+            let pArr = Array.from(players).sort();
+            let html = `<div style="overflow-x:auto;"><table><tr><th>Matchups (W-L-D)</th>`;
+            pArr.forEach(p => html += `<th>${p}</th>`); html += `</tr>`;
+            
+            pArr.forEach(rowP => {
+                html += `<tr><th>${rowP}</th>`;
+                pArr.forEach(colP => {
+                    if (rowP === colP) { html += `<td style="background:#111;">-</td>`; } 
+                    else {
+                        let r = matrix[rowP][colP];
+                        html += r ? `<td><span style="color:#48bb78">${r.w}</span>-<span style="color:#f56565">${r.l}</span>-<span style="color:#a0aec0">${r.d}</span></td>` : `<td>0-0-0</td>`;
+                    }
+                });
+                html += `</tr>`;
+            });
+            document.getElementById('modal-body-content').innerHTML = html + `</table></div>`;
+        }
+
+        // --- Data Editors ---
+        function openMetaEdit(filename, w, b, res) {
+            document.getElementById('edit-target-file').value = filename;
+            document.getElementById('edit-w-input').value = w;
+            document.getElementById('edit-b-input').value = b;
+            document.getElementById('edit-res-input').value = res;
+            document.getElementById('edit-meta-overlay').style.display = 'flex';
+        }
+        function closeMetaEdit() { document.getElementById('edit-meta-overlay').style.display = 'none'; }
+        function submitMetaEdit() {
+            let f = document.getElementById('edit-target-file').value;
+            let w = document.getElementById('edit-w-input').value, b = document.getElementById('edit-b-input').value;
+            let res = document.getElementById('edit-res-input').value;
+            if(!w || !b) return;
+            fetch('/api/game/update', { method: 'POST', body: JSON.stringify({action:'edit_meta', filename:f, white:w, black:b, result:res}) })
+                .then(() => { closeMetaEdit(); openManager(); }); 
+        }
+        
+        function openRawEditor() {
+            fetch(`/api/game/raw?file=${currentGameFile}`).then(r => r.text()).then(text => {
+                document.getElementById('raw-pgn-textarea').value = text;
+                document.getElementById('raw-editor-overlay').style.display = 'flex';
+            });
+        }
+        function closeRawEditor() { document.getElementById('raw-editor-overlay').style.display = 'none'; }
+        function saveRawPGN() {
+            let text = document.getElementById('raw-pgn-textarea').value;
+            fetch('/api/game/update', { method: 'POST', body: JSON.stringify({action:'save_raw', filename:currentGameFile, raw_text:text}) })
+                .then(() => { closeRawEditor(); loadGame(currentGameFile); }); 
+        }
+
+        function apiAction(action, filename) {
+            let payload = { action, filename };
+            if (action === 'delete' && !confirm(`Delete ${filename}?`)) return;
+            if (action === 'rename') { let nn = prompt("New filename:"); if (!nn) return; payload.new_name = nn; }
+            fetch('/api/game/update', { method: 'POST', body: JSON.stringify(payload) }).then(() => openManager());
+        }
+
+        // Keybindings
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') controlArrow('left');
+            else if (e.key === 'ArrowRight') controlArrow('right');
+        });
+
+        setInterval(fetchState, 1500); fetchState(); updateBoard();
+    </script>
+</body>
+</html>
