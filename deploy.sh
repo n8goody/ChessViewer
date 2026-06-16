@@ -13,10 +13,10 @@ fi
 echo "Building and pushing version: $VERSION..."
 
 # Build with both tags
-docker build -t your-username/chess-renderer:$VERSION -t your-username/chess-renderer:latest .
+docker build -t n8goody/chessviewer:$VERSION -t n8goody/chessviewer:latest .
 
 # Push both tags
-docker push your-username/chess-renderer:$VERSION
-docker push your-username/chess-renderer:latest
+docker push n8goody/chessviewer:$VERSION
+docker push n8goody/chessviewer:latest
 
 echo "Deployment Complete for $VERSION!"
