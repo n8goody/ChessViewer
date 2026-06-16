@@ -26,7 +26,8 @@ def init_db():
         is_empty BOOLEAN DEFAULT 0, is_checkmate BOOLEAN DEFAULT 0,
         needs_review BOOLEAN DEFAULT 0,
         exclude_stats BOOLEAN DEFAULT 0,
-        total_plies INTEGER DEFAULT 0
+        total_plies INTEGER DEFAULT 0,
+        notes TEXT DEFAULT ''
     )''')
     
     try: c.execute("ALTER TABLE games ADD COLUMN needs_review BOOLEAN DEFAULT 0")
@@ -34,6 +35,8 @@ def init_db():
     try: c.execute("ALTER TABLE games ADD COLUMN exclude_stats BOOLEAN DEFAULT 0")
     except sqlite3.OperationalError: pass
     try: c.execute("ALTER TABLE games ADD COLUMN total_plies INTEGER DEFAULT 0")
+    except sqlite3.OperationalError: pass
+    try: c.execute("ALTER TABLE games ADD COLUMN notes TEXT DEFAULT ''")
     except sqlite3.OperationalError: pass
     
     conn.commit()
@@ -71,6 +74,7 @@ def sync_pgns_to_db():
                     white = game.headers.get("White", "Unknown")
                     black = game.headers.get("Black", "Unknown")
                     result = game.headers.get("Result", "*")
+                    notes = game.headers.get("Notes", "")
                     
                     d_str = game.headers.get("Date", "")
                     t_str = game.headers.get("Time", "00:00:00")
@@ -87,9 +91,9 @@ def sync_pgns_to_db():
                     needs_review = 1 if filename != "live.pgn" else 0
                     
                     c.execute('''INSERT INTO games 
-                        (filename, white, black, result, date_played, is_empty, is_checkmate, needs_review, total_plies) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
-                        (filename, white, black, result, date_str, is_empty, is_checkmate, needs_review, plies))
+                        (filename, white, black, result, date_played, is_empty, is_checkmate, needs_review, total_plies, notes) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+                        (filename, white, black, result, date_str, is_empty, is_checkmate, needs_review, plies, notes))
         except Exception as e:
             print(f"Error parsing {filename}: {e}")
             
@@ -123,6 +127,7 @@ def update_game_action(post_data):
         new_name = post_data.get("new_name")
         exclude = post_data.get("exclude_stats", 0)
         date_played = post_data.get("date_played", "")
+        notes = post_data.get("notes", "")
         
         target_filename = filename
         if new_name and new_name != filename:
@@ -133,8 +138,8 @@ def update_game_action(post_data):
                 target_filename = new_name
             except OSError: pass
 
-        c.execute("UPDATE games SET white=?, black=?, result=?, exclude_stats=?, date_played=?, needs_review=0 WHERE filename=?", 
-                  (w, b, res, exclude, date_played, target_filename))
+        c.execute("UPDATE games SET white=?, black=?, result=?, exclude_stats=?, date_played=?, needs_review=0, notes=? WHERE filename=?", 
+                  (w, b, res, exclude, date_played, notes, target_filename))
         
         path = get_actual_path(target_filename)
         if os.path.exists(path):
@@ -144,6 +149,8 @@ def update_game_action(post_data):
                     game.headers["White"] = w
                     game.headers["Black"] = b
                     game.headers["Result"] = res
+                    if notes: game.headers["Notes"] = notes
+                    elif "Notes" in game.headers: del game.headers["Notes"]
                     
                     dp_parts = date_played.split(" ")
                     game.headers["Date"] = dp_parts[0].replace("-", ".") if len(dp_parts) > 0 else "????.??.??"
@@ -154,19 +161,14 @@ def update_game_action(post_data):
 
     elif action == "mark_review":
         c.execute("UPDATE games SET needs_review = NOT needs_review WHERE filename=?", (filename,))
-
-    # NEW: Toggle the visibility instantly from the table
     elif action == "toggle_exclude":
         c.execute("UPDATE games SET exclude_stats = NOT exclude_stats WHERE filename=?", (filename,))
-
     elif action == "save_raw":
         path = get_actual_path(filename)
         with open(path, "w") as f: f.write(post_data.get("raw_text", ""))
         c.execute("DELETE FROM games WHERE filename=?", (filename,)) 
-
     elif action == "favorite":
         c.execute("UPDATE games SET is_favorite = NOT is_favorite WHERE filename=?", (filename,))
-        
     elif action == "delete":
         c.execute("DELETE FROM games WHERE filename=?", (filename,))
         try: os.remove(get_actual_path(filename))

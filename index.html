@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChessViewer</title>
+    <!-- Google Material Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
         :root {
@@ -136,6 +137,7 @@
 </head>
 <body>
 
+    <!-- HOME PAGE -->
     <div id="home-view">
         <span class="material-symbols-outlined" style="font-size: 5rem; color: var(--primary);">chess</span>
         <h1 style="margin-top: 10px; letter-spacing: 2px;">CHESSVIEWER</h1>
@@ -167,6 +169,7 @@
         </div>
     </div>
 
+    <!-- LEADERBOARD PAGE -->
     <div id="leaderboard-view">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h1 style="margin:0;"><span class="material-symbols-outlined" style="font-size:2.5rem; color:var(--primary); vertical-align:middle;">social_leaderboard</span> Analytics Hub</h1>
@@ -179,9 +182,11 @@
         </div>
         
         <div id="leaderboard-body-content" style="background:var(--bg-card); border-radius:var(--radius); padding:20px; flex:1;">
-            </div>
+            <!-- Rendered via JS -->
+        </div>
     </div>
 
+    <!-- MAIN APP VIEW -->
     <div id="app-view">
         <div id="tv-leaderboard">
             <h3 style="text-align:center; padding: 15px; margin:0; background:var(--bg-base); border-bottom: 1px solid var(--border);">
@@ -198,6 +203,7 @@
             <div class="on-screen-controls">
                 <button onclick="controlArrow('first')"><span class="material-symbols-outlined">keyboard_double_arrow_left</span></button>
                 <button onclick="controlArrow('left')"><span class="material-symbols-outlined">chevron_left</span></button>
+                <button onclick="toggleFlip()" title="Flip Board"><span class="material-symbols-outlined">screen_rotation_alt</span></button>
                 <button onclick="controlArrow('right')"><span class="material-symbols-outlined">chevron_right</span></button>
                 <button onclick="controlArrow('last')"><span class="material-symbols-outlined">keyboard_double_arrow_right</span></button>
             </div>
@@ -224,7 +230,6 @@
                         <div id="current-game-label" style="color:var(--text-dim); font-size:0.8rem; text-overflow:ellipsis; white-space:nowrap;"></div>
                     </div>
                     <button class="btn-outline icon-btn" onclick="openCurrentGameEdit()" title="Edit Metadata"><span class="material-symbols-outlined">edit</span></button>
-                    <button class="btn-outline icon-btn" onclick="toggleFlip()" title="Flip Board"><span class="material-symbols-outlined">screen_rotation_alt</span></button>
                 </div>
                 
                 <div style="display:flex; gap: 8px;">
@@ -243,6 +248,7 @@
         </div>
     </div>
 
+    <!-- Manager Archive Modal -->
     <div id="modal-overlay" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -253,6 +259,7 @@
         </div>
     </div>
 
+    <!-- Metadata Editor Modal -->
     <div id="edit-meta-overlay" class="modal-overlay" style="z-index: 200;">
         <div class="mini-modal">
             <h3 style="margin-top:0; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Update Game Data</h3>
@@ -286,6 +293,10 @@
                     </select>
                 </div>
             </div>
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.85rem; color: var(--text-dim);">Notes:</label>
+                <input id="edit-notes-input" style="width:100%; box-sizing:border-box; margin-top:5px;" placeholder="Add game notes here...">
+            </div>
             <div style="margin-bottom: 25px; display: flex; align-items: center; gap: 10px;">
                 <input type="checkbox" id="edit-exclude-input" style="width: 18px; height: 18px; cursor: pointer;">
                 <label for="edit-exclude-input" style="cursor: pointer; font-size: 0.9rem;">Exclude from Leaderboard</label>
@@ -300,6 +311,7 @@
         </div>
     </div>
     
+    <!-- Raw PGN Editor Modal -->
     <div id="raw-editor-overlay" class="modal-overlay" style="z-index: 200;">
         <div class="modal-content" style="max-width: 700px; height: 65vh;">
             <div class="modal-header">
@@ -353,6 +365,27 @@
                 document.getElementById('engine-readout').style.display = 'block';
                 document.getElementById('deep-analyze-btn').style.display = 'flex';
             }
+        }
+
+        // Format Date string from "YYYY-MM-DD HH:MM:SS" to "MM-DD-YYYY h:mm AM/PM"
+        function formatDateTimeStr(dateStr) {
+            if (!dateStr || dateStr.includes('????')) return dateStr;
+            let parts = dateStr.split(' ');
+            if (parts.length < 2) return dateStr;
+            let dPart = parts[0], tPart = parts[1];
+            
+            let dSplit = dPart.split('-');
+            if(dSplit.length !== 3) return dateStr;
+            let [y, m, d] = dSplit;
+            
+            let tSplit = tPart.split(':');
+            let hr = parseInt(tSplit[0], 10);
+            let min = tSplit[1];
+            let ampm = hr >= 12 ? 'PM' : 'AM';
+            hr = hr % 12;
+            if (hr === 0) hr = 12;
+            
+            return `${m}-${d}-${y} ${hr}:${min} ${ampm}`;
         }
 
         function toggleFlip() { isFlipped = !isFlipped; updateBoard(); renderMaterial(); }
@@ -551,13 +584,13 @@
         }
 
         function renderGamesList() {
-            let html = `<table><tr><th>Played</th><th>File</th><th>Players (W vs B)</th><th>Moves</th><th>Result</th><th>Notes</th><th>Actions</th></tr>`;
+            let html = `<table><tr><th>Date Played</th><th>Players (W vs B)</th><th>File Name</th><th>Result</th><th>Moves</th><th>Flags</th><th>Notes</th><th>Actions</th></tr>`;
             window.allGames.forEach(g => {
                 if (g.filename === 'live.pgn') return;
                 
                 let fav = g.is_favorite ? '<span class="material-symbols-outlined filled-icon" style="color:var(--warning)">star</span>' : '<span class="material-symbols-outlined">star</span>';
-                let notes = '';
-                if (g.is_checkmate) notes += '<span class="material-symbols-outlined" style="color:var(--success)" title="Checkmate">tag</span> ';
+                let flags = '';
+                if (g.is_checkmate) flags += '<span class="material-symbols-outlined" style="color:var(--success)" title="Checkmate">tag</span> ';
                 
                 let flagIcon = g.needs_review ? '<span class="material-symbols-outlined filled-icon" style="color:var(--danger)">flag</span>' : '<span class="material-symbols-outlined">flag</span>';
                 let moves = Math.ceil(g.total_plies / 2);
@@ -565,13 +598,23 @@
                 let visIcon = g.exclude_stats ? 'visibility_off' : 'visibility';
                 let visColor = g.exclude_stats ? 'var(--text-dim)' : 'var(--text-main)';
                 
+                let formattedDate = formatDateTimeStr(g.date_played);
+                let notesText = g.notes ? g.notes : '';
+                
+                let resDisplay = g.result;
+                if (g.result === '1-0') resDisplay = `<strong>${g.white}</strong>`;
+                else if (g.result === '0-1') resDisplay = `<strong>${g.black}</strong>`;
+                else if (g.result === '1/2-1/2') resDisplay = 'Draw';
+                else if (g.result === '*') resDisplay = 'Ongoing';
+                
                 html += `<tr class="${trClass}" style="${g.needs_review ? 'background: rgba(244, 67, 54, 0.1);' : ''}">
-                    <td style="color:var(--text-dim);">${g.date_played}</td>
-                    <td style="cursor:pointer; color:var(--primary); font-weight:bold;" onclick="openMetaEdit('${g.filename}')" title="Edit Metadata">${g.filename}</td>
+                    <td style="color:var(--text-dim);">${formattedDate}</td>
                     <td>${g.white} <span style="color:var(--text-dim)">vs</span> ${g.black}</td>
+                    <td style="cursor:pointer; color:var(--primary); font-weight:bold;" onclick="openMetaEdit('${g.filename}')" title="Edit Metadata">${g.filename}</td>
+                    <td>${resDisplay}</td>
                     <td>${moves}</td>
-                    <td style="font-weight:bold;">${g.result}</td>
-                    <td>${notes}</td>
+                    <td>${flags}</td>
+                    <td style="color:var(--text-dim); font-size: 0.9em; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${notesText}">${notesText}</td>
                     <td class="action-icons" style="text-decoration: none; opacity: 1;">
                         <span onclick="window.location.href='/analysis?file=${g.filename}'" title="Play Game" class="material-symbols-outlined" style="color:var(--primary)">play_circle</span>
                         <span onclick="apiAction('favorite', '${g.filename}')" title="Favorite">${fav}</span>
@@ -681,6 +724,7 @@
             document.getElementById('edit-w-input').value = game.white;
             document.getElementById('edit-b-input').value = game.black;
             document.getElementById('edit-res-input').value = game.result;
+            document.getElementById('edit-notes-input').value = game.notes || '';
             
             let dt = game.date_played.replace(' ', 'T');
             document.getElementById('edit-date-input').value = dt;
@@ -700,6 +744,7 @@
                 black: document.getElementById('edit-b-input').value,
                 result: document.getElementById('edit-res-input').value,
                 date_played: dtRaw.replace('T', ' '),
+                notes: document.getElementById('edit-notes-input').value,
                 exclude_stats: document.getElementById('edit-exclude-input').checked ? 1 : 0
             };
             if(!payload.white || !payload.black) return;
