@@ -99,7 +99,15 @@ def sync_pgns_to_db():
 def get_all_games():
     conn = init_db()
     c = conn.cursor()
-    c.execute("SELECT * FROM games ORDER BY date_played DESC, filename DESC")
+    # FEATURE: Custom sorting logic for the Game Manager
+    c.execute("""
+        SELECT * FROM games 
+        ORDER BY 
+            needs_review DESC,
+            CASE WHEN date_played = '' OR date_played LIKE '%????%' THEN 1 ELSE 0 END ASC,
+            date_played DESC, 
+            filename DESC
+    """)
     columns = [col[0] for col in c.description]
     games = [dict(zip(columns, row)) for row in c.fetchall()]
     conn.close()
@@ -145,7 +153,6 @@ def update_game_action(post_data):
                     with open(path, "w") as f: f.write(str(game))
             except Exception: pass
 
-    # FEATURE: Update query to toggle instead of explicitly setting to 1
     elif action == "mark_review":
         c.execute("UPDATE games SET needs_review = NOT needs_review WHERE filename=?", (filename,))
 
