@@ -1,0 +1,10 @@
+# Ignore the SQLite database
+chess.db
+
+# Ignore the data folder where the live PGNs are kept
+/data/
+
+# Ignore Python's automatic cache folders (best practice)
+__pycache__/
+*.pyc
+*.pyo
