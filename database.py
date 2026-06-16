@@ -99,7 +99,6 @@ def sync_pgns_to_db():
 def get_all_games():
     conn = init_db()
     c = conn.cursor()
-    # FEATURE: Custom sorting logic for the Game Manager
     c.execute("""
         SELECT * FROM games 
         ORDER BY 
@@ -155,6 +154,10 @@ def update_game_action(post_data):
 
     elif action == "mark_review":
         c.execute("UPDATE games SET needs_review = NOT needs_review WHERE filename=?", (filename,))
+
+    # NEW: Toggle the visibility instantly from the table
+    elif action == "toggle_exclude":
+        c.execute("UPDATE games SET exclude_stats = NOT exclude_stats WHERE filename=?", (filename,))
 
     elif action == "save_raw":
         path = get_actual_path(filename)

@@ -55,12 +55,15 @@
         button, input, select { background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; outline: none; transition: all 0.2s; }
         input:focus, select:focus { border-color: var(--primary); }
         button:hover { background: #383838; }
-        .btn-primary { background: var(--primary); border: none; font-weight: bold; } .btn-primary:hover { background: var(--primary-hover); }
-        .btn-danger { background: var(--danger); border: none; } .btn-danger:hover { background: var(--danger-hover); }
+        
+        .btn-primary { background: var(--primary); border: none; font-weight: bold; color: white;} .btn-primary:hover { background: var(--primary-hover); }
+        .btn-success { background: var(--success); border: none; font-weight: bold; color: white;} .btn-success:hover { background: #388e3c; }
+        .btn-warning { background: var(--warning); border: none; font-weight: bold; color: #111;} .btn-warning:hover { background: #fbc02d; }
+        .btn-danger { background: var(--danger); border: none; color: white;} .btn-danger:hover { background: var(--danger-hover); }
         .btn-outline { background: transparent; border: 1px solid var(--border); } .btn-outline:hover { background: var(--bg-hover); }
         .icon-btn { display: flex; align-items: center; justify-content: center; gap: 5px; }
         
-        .notification-dot { position: absolute; top: 10px; right: 15px; background: var(--danger); color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.8rem; font-weight: bold; display: none; box-shadow: 0 0 10px rgba(244, 67, 54, 0.5); }
+        .notification-dot { position: absolute; top: -6px; right: -6px; background: var(--danger); color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.8rem; font-weight: bold; display: none; box-shadow: 0 0 10px rgba(244, 67, 54, 0.5); z-index: 5;}
 
         #moves-container { flex: 1; padding: 15px 20px; overflow-y: auto; font-size: 1.15rem; line-height: 2.2; }
         .turn-number { color: var(--text-dim); font-size: 0.85em; margin-right: 5px; }
@@ -82,6 +85,11 @@
         th, td { padding: 14px; text-align: left; border-bottom: 1px solid var(--border); }
         th { background: var(--bg-hover); color: var(--text-dim); position: sticky; top: 0; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; }
         tr:hover td { background: var(--bg-hover); }
+        
+        /* Strikethrough style for excluded games */
+        tr.excluded-game td { opacity: 0.5; text-decoration: line-through; }
+        tr.excluded-game td.action-icons { opacity: 1; text-decoration: none; }
+        
         .action-icons span { cursor: pointer; margin-right: 12px; transition: color 0.2s; }
         .action-icons span:hover { color: var(--primary); }
 
@@ -91,7 +99,7 @@
         
         #raw-pgn-textarea { width: 100%; height: 100%; background: var(--bg-hover); color: var(--text-main); font-family: monospace; border: none; padding: 15px; box-sizing: border-box; resize: none; border-radius: 8px; }
 
-        /* TV MODE - Includes notation, hides buttons */
+        /* TV MODES */
         body.tv-mode #tv-leaderboard { display: flex; }
         body.tv-mode .controls-bar { display: none !important; }
         body.tv-mode #engine-readout { display: none !important; }
@@ -99,18 +107,24 @@
         body.tv-mode #board-container { max-height: 90vh; max-width: 90vh; }
         body.tv-mode .material-badge { max-width: 90vh; font-size: 1.5rem; }
 
-        /* TV BOARD MODE - Pure full screen board */
         body.tv-board-mode #tv-leaderboard { display: none !important; }
         body.tv-board-mode #sidebar { display: none !important; }
         body.tv-board-mode .on-screen-controls { display: none !important; }
         body.tv-board-mode #board-container { max-height: 95vh; max-width: 95vw; }
         body.tv-board-mode .material-badge { max-width: 95vw; font-size: 1.5rem; }
 
+        /* MOBILE FIX: Display: Contents unboxes the sidebar so flex-order can map elements properly */
         @media (max-width: 768px) {
             body { flex-direction: column; overflow: auto; }
+            #app-view { flex-direction: column; display: flex !important; }
             #eval-container { display: none !important; }
-            #sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border); }
-            #moves-container { max-height: 40vh; }
+            #sidebar { display: contents; }
+            
+            .controls-bar { order: -1; border-bottom: 1px solid var(--border); border-top: none; }
+            .board-area { order: 0; min-height: 50vh; }
+            #engine-readout { order: 1; border-top: 1px solid var(--border); }
+            #moves-container { order: 2; max-height: 40vh; border-top: 1px solid var(--border); }
+            
             .home-grid { grid-template-columns: 1fr; }
         }
     </style>
@@ -149,7 +163,7 @@
         </div>
     </div>
 
-    <!-- LEADERBOARD DEDICATED PAGE -->
+    <!-- LEADERBOARD PAGE -->
     <div id="leaderboard-view">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h1 style="margin:0;"><span class="material-symbols-outlined" style="font-size:2.5rem; color:var(--primary); vertical-align:middle;">social_leaderboard</span> Analytics Hub</h1>
@@ -191,12 +205,19 @@
         
         <div id="sidebar">
             <div class="controls-bar">
+                <!-- Nav Button Group -->
                 <div style="display:flex; gap:10px;">
-                    <button class="btn-primary icon-btn" style="flex:1;" onclick="openManager(false)"><span class="material-symbols-outlined">inventory_2</span> Game Manager</button>
-                    <button class="btn-outline icon-btn" onclick="window.location.href='/leaderboard'" title="Leaderboard"><span class="material-symbols-outlined">social_leaderboard</span></button>
-                    <button class="btn-outline icon-btn" onclick="window.location.href='/'" title="Home"><span class="material-symbols-outlined">home</span></button>
+                    <button class="btn-primary icon-btn" style="flex:1; position:relative;" onclick="openManager(false)">
+                        <span class="material-symbols-outlined">inventory_2</span> Manager
+                        <div id="review-dot" class="notification-dot">!</div>
+                    </button>
+                    <button class="btn-success icon-btn" style="flex:1;" onclick="window.location.href='/leaderboard'" title="Leaderboard">
+                        <span class="material-symbols-outlined">social_leaderboard</span> Leaders
+                    </button>
+                    <button class="btn-warning icon-btn" style="flex:1;" onclick="window.location.href='/'" title="Home">
+                        <span class="material-symbols-outlined">home</span> Home
+                    </button>
                 </div>
-                <div id="review-dot" class="notification-dot">!</div>
                 
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 5px; gap: 10px;">
                     <div style="flex:1; overflow:hidden;">
@@ -222,7 +243,7 @@
         </div>
     </div>
 
-    <!-- Manager Archive Modal (Leaderboard removed) -->
+    <!-- Manager Archive Modal -->
     <div id="modal-overlay" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -529,25 +550,30 @@
         function renderGamesList() {
             let html = `<table><tr><th>Played</th><th>File</th><th>Players (W vs B)</th><th>Moves</th><th>Result</th><th>Notes</th><th>Actions</th></tr>`;
             window.allGames.forEach(g => {
+                if (g.filename === 'live.pgn') return; // Hide live.pgn
+                
                 let fav = g.is_favorite ? '<span class="material-symbols-outlined filled-icon" style="color:var(--warning)">star</span>' : '<span class="material-symbols-outlined">star</span>';
                 let notes = '';
                 if (g.is_checkmate) notes += '<span class="material-symbols-outlined" style="color:var(--success)" title="Checkmate">tag</span> ';
-                if (g.exclude_stats) notes += '<span class="material-symbols-outlined" style="color:var(--text-dim);" title="Excluded">visibility_off</span> ';
                 
                 let flagIcon = g.needs_review ? '<span class="material-symbols-outlined filled-icon" style="color:var(--danger)">flag</span>' : '<span class="material-symbols-outlined">flag</span>';
                 let moves = Math.ceil(g.total_plies / 2);
+                let trClass = g.exclude_stats ? 'excluded-game' : '';
+                let visIcon = g.exclude_stats ? 'visibility_off' : 'visibility';
+                let visColor = g.exclude_stats ? 'var(--text-dim)' : 'var(--text-main)';
                 
-                html += `<tr style="${g.needs_review ? 'background: rgba(244, 67, 54, 0.1);' : ''}">
+                html += `<tr class="${trClass}" style="${g.needs_review ? 'background: rgba(244, 67, 54, 0.1);' : ''}">
                     <td style="color:var(--text-dim);">${g.date_played}</td>
                     <td style="cursor:pointer; color:var(--primary); font-weight:bold;" onclick="openMetaEdit('${g.filename}')" title="Edit Metadata">${g.filename}</td>
                     <td>${g.white} <span style="color:var(--text-dim)">vs</span> ${g.black}</td>
                     <td>${moves}</td>
                     <td style="font-weight:bold;">${g.result}</td>
                     <td>${notes}</td>
-                    <td class="action-icons">
-                        <span onclick="loadGame('${g.filename}')" title="Play Game" class="material-symbols-outlined" style="color:var(--primary)">play_circle</span>
+                    <td class="action-icons" style="text-decoration: none; opacity: 1;">
+                        <span onclick="window.location.href='/analysis?file=${g.filename}'" title="Play Game" class="material-symbols-outlined" style="color:var(--primary)">play_circle</span>
                         <span onclick="apiAction('favorite', '${g.filename}')" title="Favorite">${fav}</span>
                         <span onclick="apiAction('mark_review', '${g.filename}')" title="Toggle Review Status">${flagIcon}</span>
+                        <span onclick="apiAction('toggle_exclude', '${g.filename}')" title="Toggle Leaderboard Visibility" class="material-symbols-outlined" style="color:${visColor}">${visIcon}</span>
                         <span onclick="apiAction('delete', '${g.filename}')" style="color:var(--danger);" title="Delete" class="material-symbols-outlined">delete</span>
                     </td></tr>`;
             });
@@ -715,6 +741,10 @@
             } else if (action === 'favorite') {
                 let g = window.allGames.find(x => x.filename === filename);
                 if (g) g.is_favorite = !g.is_favorite;
+                if (document.getElementById('modal-overlay').style.display === 'flex') renderGamesList();
+            } else if (action === 'toggle_exclude') {
+                let g = window.allGames.find(x => x.filename === filename);
+                if (g) g.exclude_stats = !g.exclude_stats;
                 if (document.getElementById('modal-overlay').style.display === 'flex') renderGamesList();
             }
 
