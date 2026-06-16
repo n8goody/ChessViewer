@@ -29,7 +29,6 @@ def init_db():
         total_plies INTEGER DEFAULT 0
     )''')
     
-    # Safe migrations
     try: c.execute("ALTER TABLE games ADD COLUMN needs_review BOOLEAN DEFAULT 0")
     except sqlite3.OperationalError: pass
     try: c.execute("ALTER TABLE games ADD COLUMN exclude_stats BOOLEAN DEFAULT 0")
@@ -65,7 +64,6 @@ def sync_pgns_to_db():
                 c.execute("SELECT total_plies FROM games WHERE filename=?", (filename,))
                 row = c.fetchone()
                 
-                # Backfill legacy games that have 0 plies in the database
                 if row and row[0] == 0 and plies > 0:
                     c.execute("UPDATE games SET total_plies=? WHERE filename=?", (plies, filename))
                 
@@ -74,7 +72,6 @@ def sync_pgns_to_db():
                     black = game.headers.get("Black", "Unknown")
                     result = game.headers.get("Result", "*")
                     
-                    # Extract full timestamp
                     d_str = game.headers.get("Date", "")
                     t_str = game.headers.get("Time", "00:00:00")
                     if not d_str or d_str == "????.??.??":
@@ -132,7 +129,6 @@ def update_game_action(post_data):
         c.execute("UPDATE games SET white=?, black=?, result=?, exclude_stats=?, date_played=?, needs_review=0 WHERE filename=?", 
                   (w, b, res, exclude, date_played, target_filename))
         
-        # Safely rewrite PGN headers using the chess library
         path = get_actual_path(target_filename)
         if os.path.exists(path):
             try:
@@ -149,8 +145,9 @@ def update_game_action(post_data):
                     with open(path, "w") as f: f.write(str(game))
             except Exception: pass
 
+    # FEATURE: Update query to toggle instead of explicitly setting to 1
     elif action == "mark_review":
-        c.execute("UPDATE games SET needs_review=1 WHERE filename=?", (filename,))
+        c.execute("UPDATE games SET needs_review = NOT needs_review WHERE filename=?", (filename,))
 
     elif action == "save_raw":
         path = get_actual_path(filename)
