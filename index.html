@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChessViewer</title>
-    <!-- Google Material Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
         :root {
@@ -28,7 +27,11 @@
         .material-symbols-outlined { vertical-align: middle; font-size: 1.2rem; }
         .filled-icon { font-variation-settings: 'FILL' 1; }
         
-        /* App Layouts - Adjusted for Home Assistant iFrames & Tablets */
+        /* Custom Toast UI for Home Assistant (bypasses alert blocks) */
+        #custom-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--primary); color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; font-size: 1rem; opacity: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 9999; pointer-events: none; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        #custom-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* App Layouts */
         #home-view, #leaderboard-view, #app-view { display: none; width: 100%; height: 100%; }
         
         #home-view { flex-direction: column; align-items: center; justify-content: flex-start; padding: 5vmin 2vmin; overflow-y: auto; box-sizing: border-box; }
@@ -42,14 +45,23 @@
         .home-card:hover { border-color: var(--primary); transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
         .home-card .material-symbols-outlined { font-size: 3rem; color: var(--primary); margin-bottom: 10px; }
 
+        /* Live Active Pulse Animation */
+        @keyframes pulse-red { 
+            0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); border-color: var(--danger); }
+            70% { box-shadow: 0 0 0 15px rgba(244, 67, 54, 0); border-color: var(--danger); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); border-color: var(--danger); }
+        }
+        .live-active { animation: pulse-red 2s infinite; border-color: var(--danger) !important; }
+        .live-active .material-symbols-outlined { color: var(--danger) !important; }
+
         .board-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2vmin; position: relative; }
         .material-badge { background: var(--bg-card); color: var(--text-main); padding: 6px 12px; border-radius: var(--radius); font-weight: bold; margin: 5px 0; font-size: 1.1rem; display: flex; justify-content: center; width: 100%; max-width: 80vh; border: 1px solid var(--border); transition: color 0.3s; }
         
-        /* Using iframe creates an absolute sandbox against Home Assistant base tags and CSS pollution */
+        /* Base64 Nuclear Image Fix */
         #board-container { width: 100%; height: 100%; max-height: 75vh; max-width: 75vh; display:flex; justify-content:center; }
-        #board-container iframe { width: 100%; height: 100%; border: none; pointer-events: none; }
+        #board-container img { width: 100%; height: 100%; object-fit: contain; }
         
-        .on-screen-controls { display: flex; gap: 10px; margin-top: 10px; width: 100%; max-width: 80vh; justify-content: center; }
+        .on-screen-controls { display: flex; gap: 10px; margin-top: 10px; width: 100%; max-width: 80vh; justify-content: center; position: relative; }
         .on-screen-controls button { padding: 8px 25px; background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); }
         
         #tv-leaderboard { display: none; width: 320px; background: var(--bg-card); border-right: 1px solid var(--border); flex-direction: column; }
@@ -69,7 +81,7 @@
         
         .notification-dot { position: absolute; top: -6px; right: -6px; background: var(--danger); color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.8rem; font-weight: bold; display: none; box-shadow: 0 0 10px rgba(244, 67, 54, 0.5); z-index: 5;}
 
-        #moves-container { flex: 1; padding: 15px 20px; overflow-y: auto; font-size: 1.15rem; line-height: 2.2; }
+        #moves-container { flex: 1; padding: 15px 20px; overflow-y: auto; font-size: 1.15rem; line-height: 2.2; position: relative; }
         .turn-number { color: var(--text-dim); font-size: 0.85em; margin-right: 5px; }
         .move-span { cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background 0.15s; }
         .move-span:hover { background: var(--bg-hover); }
@@ -83,15 +95,24 @@
         .modal-header { padding: 15px 20px; background: var(--bg-card); display: flex; gap: 10px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
         .tabs button { flex: 1; border-radius: 8px; background: transparent; border: none; color: var(--text-dim); font-weight: bold; padding: 10px; } 
         .tabs button.active { background: var(--bg-hover); color: var(--primary); }
-        .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
+        .modal-body { flex: 1; overflow-y: auto; padding: 20px; position: relative; }
         
         table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: var(--radius); overflow: hidden; }
         th, td { padding: 14px; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background: var(--bg-hover); color: var(--text-dim); position: sticky; top: 0; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; }
-        tr:hover td { background: var(--bg-hover); }
+        th { background: var(--bg-hover); color: var(--text-dim); position: sticky; top: 0; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; z-index: 5; }
         
+        /* Accordion Row Styling */
+        tr.main-row { cursor: pointer; transition: background 0.15s; }
+        tr.main-row:hover { background: var(--bg-hover); }
         tr.excluded-game td { opacity: 0.5; text-decoration: line-through; }
-        tr.excluded-game td.action-icons { opacity: 1; text-decoration: none; }
+        
+        .expanded-details { display: none; background: #222222; }
+        .expanded-details td { padding: 20px; border-bottom: 1px solid var(--border); box-shadow: inset 0 5px 10px rgba(0,0,0,0.2); }
+        .details-grid { display: grid; grid-template-columns: 1fr 250px; gap: 20px; }
+        .details-panel { background: var(--bg-card); padding: 15px; border-radius: var(--radius); border: 1px solid var(--border); }
+        
+        .thumbnail-wrapper { width: 60px; height: 60px; border-radius: 8px; background: #e0c094; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
+        .thumbnail-wrapper img { width: 100%; height: 100%; object-fit: cover; }
         
         .action-icons span { cursor: pointer; margin-right: 12px; transition: color 0.2s; }
         .action-icons span:hover { color: var(--primary); }
@@ -142,12 +163,13 @@
 </head>
 <body>
 
-    <!-- HOME PAGE -->
+    <div id="custom-toast">Action Completed</div>
+
     <div id="home-view">
         <span class="material-symbols-outlined" style="font-size: 5rem; color: var(--primary);">chess</span>
         <h1 style="margin-top: 10px; letter-spacing: 2px;">CHESSVIEWER</h1>
         <div class="home-grid">
-            <div class="home-card" onclick="window.location.href='/live'">
+            <div id="home-card-live" class="home-card" onclick="window.location.href='/live'">
                 <span class="material-symbols-outlined">sensors</span>
                 <h3>Live Stream</h3>
             </div>
@@ -157,14 +179,13 @@
             </div>
             <div class="home-card" onclick="window.location.href='/leaderboard'">
                 <span class="material-symbols-outlined">social_leaderboard</span>
-                <h3>Standings</h3>
+                <h3>Leaderboard</h3>
             </div>
             <div class="home-card" onclick="openManager(true)">
                 <span class="material-symbols-outlined">chess_queen</span>
                 <h3>Games</h3>
             </div>
             
-            <!-- Visually Separated TV Views -->
             <div style="grid-column: 1 / -1; border-top: 1px solid var(--border); margin-top: 20px; padding-top: 30px; text-align: center;">
                 <h2 style="margin: 0; color: var(--text-dim); font-size: 1.2rem; letter-spacing: 1.5px; text-transform: uppercase;">TV Dashboards</h2>
             </div>
@@ -182,26 +203,24 @@
         </div>
     </div>
 
-    <!-- STANDINGS PAGE -->
     <div id="leaderboard-view">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h1 style="margin:0;"><span class="material-symbols-outlined" style="font-size:2.5rem; color:var(--primary); vertical-align:middle;">social_leaderboard</span> Standings</h1>
+            <h1 style="margin:0;"><span class="material-symbols-outlined" style="font-size:2.5rem; color:var(--primary); vertical-align:middle;">social_leaderboard</span> Leaderboard</h1>
             <button class="btn-outline icon-btn" onclick="window.location.href='/'"><span class="material-symbols-outlined">home</span> Home</button>
         </div>
         
         <div class="tabs" style="display:flex; gap:10px; margin-bottom: 20px; background:var(--bg-card); padding:10px; border-radius:var(--radius);">
-            <button id="tab-leader" class="active" onclick="switchLeaderTab('leader')"><span class="material-symbols-outlined">leaderboard</span> Leaderboard</button>
+            <button id="tab-leader" class="active" onclick="switchLeaderTab('leader')"><span class="material-symbols-outlined">leaderboard</span> Rankings</button>
             <button id="tab-matrix" onclick="switchLeaderTab('matrix')"><span class="material-symbols-outlined">grid_on</span> Head-to-Head Matrix</button>
         </div>
         
         <div id="leaderboard-body-content" style="background:var(--bg-card); border-radius:var(--radius); padding:20px; flex:1;"></div>
     </div>
 
-    <!-- MAIN APP VIEW -->
     <div id="app-view">
         <div id="tv-leaderboard">
             <h3 style="text-align:center; padding: 15px; margin:0; background:var(--bg-base); border-bottom: 1px solid var(--border);">
-                <span class="material-symbols-outlined">social_leaderboard</span> Weekly Standings
+                <span class="material-symbols-outlined">social_leaderboard</span> Leaderboard
             </h3>
             <div id="tv-leader-content" style="padding: 10px; overflow-y:auto;"></div>
         </div>
@@ -211,8 +230,7 @@
         <div class="board-area">
             <div id="mat-top" class="material-badge"></div>
             <div id="board-container">
-                <!-- Sandbox iframe to protect SVG rendering -->
-            </div>
+                </div>
             <div class="on-screen-controls">
                 <button onclick="controlArrow('first')"><span class="material-symbols-outlined">keyboard_double_arrow_left</span></button>
                 <button onclick="controlArrow('left')"><span class="material-symbols-outlined">chevron_left</span></button>
@@ -220,6 +238,11 @@
                 <button onclick="controlArrow('right')"><span class="material-symbols-outlined">chevron_right</span></button>
                 <button onclick="controlArrow('last')"><span class="material-symbols-outlined">keyboard_double_arrow_right</span></button>
             </div>
+            
+            <button id="resume-live-btn" class="btn-primary icon-btn" style="display:none; position:absolute; bottom:2vmin; right:2vmin; z-index:20; box-shadow: 0 4px 10px rgba(0,0,0,0.5); padding: 10px 20px;" onclick="viewPly(-1)">
+                <span class="material-symbols-outlined">sensors</span> Resume Live
+            </button>
+            
             <div id="mat-bot" class="material-badge"></div>
         </div>
         
@@ -230,8 +253,8 @@
                         <span class="material-symbols-outlined">chess_queen</span> Games
                         <div id="review-dot" class="notification-dot">!</div>
                     </button>
-                    <button class="btn-success icon-btn" style="flex:1;" onclick="window.location.href='/leaderboard'" title="Standings">
-                        <span class="material-symbols-outlined">social_leaderboard</span> Standings
+                    <button class="btn-success icon-btn" style="flex:1;" onclick="window.location.href='/leaderboard'" title="Leaderboard">
+                        <span class="material-symbols-outlined">social_leaderboard</span> Leaders
                     </button>
                     <button class="btn-warning icon-btn" style="flex:1;" onclick="window.location.href='/'" title="Home">
                         <span class="material-symbols-outlined">home</span> Home
@@ -240,9 +263,8 @@
                 
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 5px; gap: 10px;">
                     <div style="flex:1; overflow:hidden;">
-                        <div id="current-game-label" style="color:var(--text-dim); font-size:0.8rem; text-overflow:ellipsis; white-space:nowrap;"></div>
+                        <div id="current-game-label" style="color:var(--primary); font-weight:bold; font-size:0.9rem; text-overflow:ellipsis; white-space:nowrap;"></div>
                     </div>
-                    <!-- Moved Share & Edit buttons together -->
                     <button class="btn-outline icon-btn" onclick="copyToClipboard(currentGameFile)" title="Share Game"><span class="material-symbols-outlined">share</span></button>
                     <button class="btn-outline icon-btn" onclick="openCurrentGameEdit()" title="Edit Metadata"><span class="material-symbols-outlined">edit</span></button>
                 </div>
@@ -262,18 +284,41 @@
         </div>
     </div>
 
-    <!-- Games Modal -->
     <div id="modal-overlay" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 style="margin:0; display:flex; align-items:center; gap: 10px;"><span class="material-symbols-outlined">chess_queen</span> Games</h2>
-                <button class="btn-outline icon-btn" onclick="closeManager()" style="flex:0;"><span class="material-symbols-outlined">close</span></button>
+                <h2 style="margin:0; display:flex; align-items:center; gap: 10px;"><span class="material-symbols-outlined">chess_queen</span> Games Database</h2>
+                <div style="display:flex; gap: 10px;">
+                    <button class="btn-primary icon-btn" onclick="openAddGameModal()"><span class="material-symbols-outlined">add</span> Import PGN</button>
+                    <button class="btn-outline icon-btn" onclick="closeManager()"><span class="material-symbols-outlined">close</span></button>
+                </div>
             </div>
-            <div class="modal-body" id="modal-body-content"></div>
+            <div class="modal-body" style="padding: 0; display:flex; flex-direction:column;">
+                <div style="flex:1; overflow-y:auto;" id="modal-body-content"></div>
+                <div id="pagination-controls" style="padding: 15px; background:var(--bg-card); border-top: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                    </div>
+            </div>
         </div>
     </div>
 
-    <!-- Metadata Editor Modal -->
+    <div id="add-game-overlay" class="modal-overlay" style="z-index: 250;">
+        <div class="mini-modal" style="width: 500px;">
+            <h3 style="margin-top:0; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Import New Game</h3>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 0.85rem; color: var(--text-dim);">Filename (Must be unique):</label>
+                <input id="new-game-name" style="width:100%; box-sizing:border-box; margin-top:5px;" placeholder="e.g. 2026-06-16_MyGame.pgn">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.85rem; color: var(--text-dim);">Paste Raw PGN:</label>
+                <textarea id="new-game-pgn" style="width:100%; height:150px; background:var(--bg-hover); color:var(--text-main); border:1px solid var(--border); border-radius:8px; padding:10px; margin-top:5px; resize:none;"></textarea>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-primary icon-btn" style="flex:1;" onclick="submitNewGame()"><span class="material-symbols-outlined">cloud_upload</span> Import</button>
+                <button class="btn-outline icon-btn" style="flex:1;" onclick="closeAddGameModal()"><span class="material-symbols-outlined">cancel</span> Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <div id="edit-meta-overlay" class="modal-overlay" style="z-index: 200;">
         <div class="mini-modal">
             <h3 style="margin-top:0; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Update Game Data</h3>
@@ -313,10 +358,12 @@
             </div>
             <div style="margin-bottom: 25px; display: flex; align-items: center; gap: 10px;">
                 <input type="checkbox" id="edit-exclude-input" style="width: 18px; height: 18px; cursor: pointer;">
-                <label for="edit-exclude-input" style="cursor: pointer; font-size: 0.9rem;">Exclude from Standings</label>
+                <label for="edit-exclude-input" style="cursor: pointer; font-size: 0.9rem;">Exclude from Leaderboard</label>
             </div>
 
-            <!-- Integrated Raw Editor Button -->
+            <button id="btn-meta-archive" type="button" class="btn-success icon-btn" style="width: 100%; margin-bottom: 10px; display:none;" onclick="archiveLiveGame()">
+                <span class="material-symbols-outlined">inventory</span> Save & Archive Live Game
+            </button>
             <button id="btn-meta-raw" type="button" class="btn-outline icon-btn" style="width: 100%; margin-bottom: 15px;" onclick="openRawEditorFromMeta()">
                 <span class="material-symbols-outlined">code</span> View / Edit Raw PGN
             </button>
@@ -330,8 +377,7 @@
         </div>
     </div>
     
-    <!-- Raw PGN Editor Modal -->
-    <div id="raw-editor-overlay" class="modal-overlay" style="z-index: 200;">
+    <div id="raw-editor-overlay" class="modal-overlay" style="z-index: 260;">
         <div class="modal-content" style="max-width: 700px; height: 65vh;">
             <div class="modal-header">
                 <h3 style="margin:0;">Raw PGN Editor</h3>
@@ -355,6 +401,9 @@
         const IS_TV_BOARD = PATH === '/tv-board';
         const IS_LEADERBOARD = PATH === '/leaderboard';
         
+        let currentPage = 1;
+        const GAMES_PER_PAGE = 7;
+        
         if (IS_HOME) {
             document.getElementById('home-view').style.display = 'flex';
         } else if (IS_LEADERBOARD) {
@@ -372,11 +421,17 @@
         let isFlipped = false, currentBestMove = null, evalCache = {};
         window.allGames = [];
 
+        function showToast(msg) {
+            let t = document.getElementById('custom-toast');
+            t.innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
         if (!IS_HOME && !IS_LEADERBOARD) {
             let toggleBtn = document.getElementById('mode-toggle-btn');
             toggleBtn.innerHTML = IS_ANALYSIS ? '<span class="material-symbols-outlined">sensors</span> Live Mode' : '<span class="material-symbols-outlined">troubleshoot</span> Analysis Mode';
             toggleBtn.onclick = () => window.location.href = IS_ANALYSIS ? `/live?file=${currentGameFile}` : `/analysis?file=${currentGameFile}`;
-            document.getElementById('current-game-label').innerText = `Viewing: ${currentGameFile}`;
             
             if (IS_ANALYSIS && !IS_TV && !IS_TV_BOARD) {
                 document.getElementById('eval-container').style.display = 'flex';
@@ -385,7 +440,6 @@
             }
         }
 
-        // Format Date string from "YYYY-MM-DD HH:MM:SS" to "MM-DD-YYYY h:mm AM/PM"
         function formatDateTimeStr(dateStr) {
             if (!dateStr || dateStr.includes('????')) return dateStr;
             let parts = dateStr.split(' ');
@@ -419,14 +473,18 @@
         function loadGame(filename) {
             currentGameFile = filename;
             if (!IS_TV && !IS_TV_BOARD && !IS_HOME && !IS_LEADERBOARD) history.pushState(null, '', `?file=${filename}`); 
-            
-            document.getElementById('current-game-label').innerText = `Viewing: ${filename}`;
             totalPlies = 0; currentViewPly = -1; currentBestMove = null; evalCache = {};
             closeManager(); updateBoard(); fetchState();
         }
 
         function viewPly(ply) {
             currentViewPly = ply; currentBestMove = null;
+            
+            // Manage "Resume Live" button visibility
+            if(!IS_HOME && !IS_LEADERBOARD && !IS_TV && !IS_TV_BOARD) {
+                document.getElementById('resume-live-btn').style.display = (IS_LIVE && ply !== -1) ? 'flex' : 'none';
+            }
+
             updateBoard(); renderMovesList(); renderMaterial();
             if (IS_ANALYSIS && !IS_TV && !IS_TV_BOARD) {
                 let moveObj = lastMovesData.find(m => m.ply === ply);
@@ -440,17 +498,48 @@
             const bm = (IS_ANALYSIS && currentBestMove) ? `&bestmove=${encodeURIComponent(currentBestMove)}` : '';
             const svgUrl = `/board.svg?file=${currentGameFile}${target}&flipped=${isFlipped}${bm}&t=${Date.now()}`;
             
-            // Iframe Sandbox explicitly protects SVG from HA Base tag and CSS pollution
-            let iframe = document.getElementById('board-iframe');
-            if (!iframe) {
-                iframe = document.createElement('iframe');
-                iframe.id = 'board-iframe';
-                iframe.setAttribute('frameborder', '0');
-                iframe.setAttribute('scrolling', 'no');
-                document.getElementById('board-container').innerHTML = ''; 
-                document.getElementById('board-container').appendChild(iframe);
+            // Nuclear SVG-to-Base64 Image Injection (Destroys WebView Shadow DOM bugs)
+            fetch(svgUrl)
+                .then(r => r.text())
+                .then(svgText => {
+                    const b64 = btoa(unescape(encodeURIComponent(svgText)));
+                    let img = document.getElementById('board-img');
+                    if (!img) {
+                        img = document.createElement('img');
+                        img.id = 'board-img';
+                        document.getElementById('board-container').innerHTML = ''; 
+                        document.getElementById('board-container').appendChild(img);
+                    }
+                    img.src = `data:image/svg+xml;base64,${b64}`;
+                });
+        }
+
+        function updateH2HHeader() {
+            let game = window.allGames.find(g => g.filename === currentGameFile);
+            if (!game) return;
+            
+            let wName = game.white.replace(/-1$/, '');
+            let bName = game.black.replace(/-1$/, '');
+            
+            let wWins = 0, bWins = 0, draws = 0;
+            window.allGames.forEach(g => {
+                if (g.result === '*' || g.is_empty) return;
+                let cw = g.white.replace(/-1$/, '');
+                let cb = g.black.replace(/-1$/, '');
+                
+                if ((cw === wName && cb === bName) || (cw === bName && cb === wName)) {
+                    let isWhiteOriginal = (cw === wName);
+                    if (g.result === '1-0') { if(isWhiteOriginal) wWins++; else bWins++; }
+                    else if (g.result === '0-1') { if(isWhiteOriginal) bWins++; else wWins++; }
+                    else if (g.result === '1/2-1/2') { draws++; }
+                }
+            });
+            
+            let headerText = `${wName} vs ${bName} (W: ${wWins} - B: ${bWins} - D: ${draws})`;
+            if(currentGameFile === 'live.pgn' && wName === 'Unknown' && bName === 'Unknown') {
+                headerText = "Live Stream (Awaiting Player Assignment)";
             }
-            iframe.src = svgUrl;
+            document.getElementById('current-game-label').innerText = headerText;
         }
 
         function getDiffColor(absDiff) {
@@ -470,7 +559,6 @@
             let color = getDiffColor(absDiff);
             
             let game = window.allGames.find(g => g.filename === currentGameFile);
-            
             let wName = (game && game.white !== 'Unknown' ? game.white : 'White').replace(/-1$/, '');
             let bName = (game && game.black !== 'Unknown' ? game.black : 'Black').replace(/-1$/, '');
             
@@ -485,7 +573,7 @@
                 bot.innerText = bText; bot.className = "material-badge"; if(diff < 0) top.style.color = color;
             } else {
                 top.innerText = bText; top.className = "material-badge"; if(diff < 0) top.style.color = color;
-                bot.innerText = wText; bot.className = "material-badge"; if(diff > 0) bot.style.color = color;
+                bot.innerText = wText; bot.className = "material-badge"; if(diff > 0) top.style.color = color;
             }
         }
 
@@ -577,6 +665,14 @@
                 
                 if (!IS_HOME && !IS_LEADERBOARD) {
                     renderMaterial();
+                    updateH2HHeader();
+                }
+                
+                let liveActive = games.find(g => g.filename === 'live.pgn' && g.total_plies > 0);
+                if (IS_HOME) {
+                    let liveCard = document.getElementById('home-card-live');
+                    if (liveActive) liveCard.classList.add('live-active');
+                    else liveCard.classList.remove('live-active');
                 }
                 
                 if (!IS_TV && !IS_TV_BOARD && !IS_HOME && !IS_LEADERBOARD) {
@@ -598,7 +694,7 @@
             if(fromHome && document.getElementById('home-view')) document.getElementById('home-view').style.display = 'none';
             document.getElementById('modal-overlay').style.display = 'flex'; 
             updateDatalist(); 
-            renderGamesList();
+            renderGamesList(1);
         }
         function closeManager() { 
             document.getElementById('modal-overlay').style.display = 'none'; 
@@ -618,66 +714,127 @@
         function copyToClipboard(filename) {
             let url = window.location.origin + '/analysis?file=' + encodeURIComponent(filename);
             navigator.clipboard.writeText(url).then(() => {
-                alert("Link copied to clipboard!");
+                showToast("Share Link Copied!");
             }).catch(err => {
                 console.error("Failed to copy link: ", err);
             });
         }
+        
+        function toggleRow(id) {
+            let el = document.getElementById(`details-${id}`);
+            let icon = document.getElementById(`expand-icon-${id}`);
+            if (el.style.display === 'table-row') {
+                el.style.display = 'none';
+                icon.innerText = 'expand_more';
+            } else {
+                // Close others
+                document.querySelectorAll('.expanded-details').forEach(d => d.style.display = 'none');
+                document.querySelectorAll('.expand-chevron').forEach(i => i.innerText = 'expand_more');
+                el.style.display = 'table-row';
+                icon.innerText = 'expand_less';
+            }
+        }
 
-        function renderGamesList() {
-            let html = `<table><tr><th>Date Played</th><th>Players (W vs B)</th><th>File Name</th><th>Result</th><th>Moves</th><th>Flags</th><th>Notes</th><th>Actions</th></tr>`;
-            window.allGames.forEach(g => {
-                if (g.filename === 'live.pgn') return;
-                
+        function renderGamesList(page = 1) {
+            currentPage = page;
+            let gamesList = window.allGames.filter(g => g.filename !== 'live.pgn');
+            let liveGame = window.allGames.find(g => g.filename === 'live.pgn' && g.total_plies > 0);
+            
+            let totalPages = Math.max(1, Math.ceil(gamesList.length / GAMES_PER_PAGE));
+            let start = (page - 1) * GAMES_PER_PAGE;
+            let pagedGames = gamesList.slice(start, start + GAMES_PER_PAGE);
+            
+            let html = `<table><tr><th style="width:20px;"></th><th>Board</th><th>Date Played</th><th>Players (W vs B)</th><th>Result</th><th>Moves</th><th>Actions</th></tr>`;
+            
+            // Generate Row Function
+            const buildRow = (g, isLiveTop = false) => {
+                let safeId = g.filename.replace(/[^a-zA-Z0-9]/g, '');
                 let fav = g.is_favorite ? '<span class="material-symbols-outlined filled-icon" style="color:var(--warning)">star</span>' : '<span class="material-symbols-outlined">star</span>';
-                
-                let flags = '';
-                if (g.is_checkmate) {
-                    flags += '<span class="material-symbols-outlined" style="color:var(--success)" title="Checkmate">tag</span> ';
-                } else if (g.result === '1-0' || g.result === '0-1') {
-                    // Resigned logic
-                    flags += '<span class="material-symbols-outlined" style="color:var(--warning)" title="Resigned / Timeout">flag_circle</span> ';
-                }
-                
                 let flagIcon = g.needs_review ? '<span class="material-symbols-outlined filled-icon" style="color:var(--danger)">flag</span>' : '<span class="material-symbols-outlined">flag</span>';
+                
                 let moves = Math.ceil(g.total_plies / 2);
-                let trClass = g.exclude_stats ? 'excluded-game' : '';
+                let trClass = g.exclude_stats ? 'excluded-game main-row' : 'main-row';
                 let visIcon = g.exclude_stats ? 'visibility_off' : 'visibility';
                 let visColor = g.exclude_stats ? 'var(--text-dim)' : 'var(--text-main)';
-                
                 let formattedDate = formatDateTimeStr(g.date_played);
-                let notesText = g.notes ? g.notes : '';
+                let notesPreview = g.notes ? g.notes.substring(0, 30) + (g.notes.length > 30 ? '...' : '') : '<span style="color:var(--border)">No notes</span>';
                 
                 let cleanW = g.white.replace(/-1$/, '');
                 let cleanB = g.black.replace(/-1$/, '');
                 
+                // Formatted Player Win Result (Replaced Flags Column)
                 let resDisplay = g.result;
-                if (g.result === '1-0') resDisplay = `<strong>${cleanW} won</strong>`;
-                else if (g.result === '0-1') resDisplay = `<strong>${cleanB} won</strong>`;
-                else if (g.result === '1/2-1/2') resDisplay = 'Draw';
-                else if (g.result === '*') resDisplay = 'Ongoing';
+                if (g.result === '1-0') {
+                    resDisplay = `<span style="color:var(--success); font-weight:bold;">${cleanW} won</span> by ${g.is_checkmate ? 'Checkmate <span class="material-symbols-outlined" style="font-size:1.1em; vertical-align:middle;">tag</span>' : 'Resignation <span class="material-symbols-outlined" style="color:var(--warning); font-size:1.1em; vertical-align:middle;">flag_circle</span>'}`;
+                } else if (g.result === '0-1') {
+                    resDisplay = `<span style="color:var(--success); font-weight:bold;">${cleanB} won</span> by ${g.is_checkmate ? 'Checkmate <span class="material-symbols-outlined" style="font-size:1.1em; vertical-align:middle;">tag</span>' : 'Resignation <span class="material-symbols-outlined" style="color:var(--warning); font-size:1.1em; vertical-align:middle;">flag_circle</span>'}`;
+                } else if (g.result === '1/2-1/2') {
+                    resDisplay = `Draw <span class="material-symbols-outlined" style="color:var(--text-dim); font-size:1.1em; vertical-align:middle;">balance</span>`;
+                } else if (g.result === '*') {
+                    resDisplay = 'Ongoing';
+                }
                 
-                html += `<tr class="${trClass}" style="cursor:pointer; ${g.needs_review ? 'background: rgba(244, 67, 54, 0.1);' : ''}" onclick="window.location.href='/analysis?file=${g.filename}'">
+                let rowStyle = '';
+                let liveActionColor = 'var(--text-dim)';
+                if (isLiveTop) {
+                    rowStyle = 'border: 2px solid var(--danger); box-shadow: 0 0 15px rgba(244, 67, 54, 0.2);';
+                    liveActionColor = 'var(--danger)';
+                } else if (g.needs_review) {
+                    rowStyle = 'background: rgba(244, 67, 54, 0.1);';
+                }
+                
+                let out = `<tr class="${trClass}" style="${rowStyle}" onclick="toggleRow('${safeId}')">
+                    <td style="color:var(--primary);"><span id="expand-icon-${safeId}" class="material-symbols-outlined expand-chevron">expand_more</span></td>
+                    <td><div class="thumbnail-wrapper"><img src="/board.svg?file=${g.filename}"></div></td>
                     <td style="color:var(--text-dim);">${formattedDate}</td>
                     <td>${cleanW} <span style="color:var(--text-dim)">vs</span> ${cleanB}</td>
-                    <td style="font-weight:bold; color:var(--text-main);">${g.filename}</td>
                     <td>${resDisplay}</td>
                     <td>${moves}</td>
-                    <td>${flags}</td>
-                    <td style="color:var(--text-dim); font-size: 0.9em; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${notesText}">${notesText}</td>
                     <td class="action-icons" style="text-decoration: none; opacity: 1;" onclick="event.stopPropagation();">
-                        <span onclick="window.location.href='/analysis?file=${g.filename}'" title="Play Game" class="material-symbols-outlined" style="color:var(--primary)">play_circle</span>
+                        <span onclick="window.location.href='/live?file=${g.filename}'" title="Live Stream View" class="material-symbols-outlined" style="color:${liveActionColor}">sensors</span>
                         <span onclick="openMetaEdit('${g.filename}')" title="Edit Metadata" class="material-symbols-outlined">edit</span>
                         <span onclick="copyToClipboard('${g.filename}')" title="Share Game" class="material-symbols-outlined">share</span>
                         <span onclick="apiAction('favorite', '${g.filename}')" title="Favorite">${fav}</span>
-                        <span onclick="apiAction('mark_review', '${g.filename}')" title="Toggle Review Status">${flagIcon}</span>
-                        <span onclick="apiAction('toggle_exclude', '${g.filename}')" title="Toggle Standings Visibility" class="material-symbols-outlined" style="color:${visColor}">${visIcon}</span>
-                        <span onclick="apiAction('delete', '${g.filename}')" style="color:var(--danger);" title="Delete" class="material-symbols-outlined">delete</span>
-                    </td></tr>`;
-            });
+                    </td></tr>
+                    
+                    <tr id="details-${safeId}" class="expanded-details">
+                        <td colspan="7">
+                            <div class="details-grid">
+                                <div class="details-panel">
+                                    <h4 style="margin:0 0 10px 0; color:var(--primary);">Game Notes</h4>
+                                    <p style="margin:0; font-size:0.95rem; line-height:1.5; color:var(--text-main);">${g.notes ? g.notes : '<em>No notes recorded for this game.</em>'}</p>
+                                </div>
+                                <div class="details-panel" style="display:flex; flex-direction:column; gap:8px;">
+                                    <div style="font-size:0.8rem; color:var(--text-dim); word-break:break-all; margin-bottom:10px;"><strong>File:</strong> ${g.filename}</div>
+                                    <button class="btn-outline icon-btn" onclick="apiAction('mark_review', '${g.filename}')">${flagIcon} Toggle Review Status</button>
+                                    <button class="btn-outline icon-btn" onclick="apiAction('toggle_exclude', '${g.filename}')"><span class="material-symbols-outlined" style="color:${visColor}">${visIcon}</span> Toggle Visibility</button>
+                                    <button class="btn-danger icon-btn" onclick="apiAction('delete', '${g.filename}')"><span class="material-symbols-outlined">delete</span> Delete Permanently</button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>`;
+                return out;
+            };
+
+            if (liveGame) html += buildRow(liveGame, true);
+            pagedGames.forEach(g => html += buildRow(g, false));
+            
             document.getElementById('modal-body-content').innerHTML = html + "</table>";
+            
+            // Render Pagination
+            let pCtrl = document.getElementById('pagination-controls');
+            let prevDisabled = currentPage === 1 ? 'disabled opacity:0.5' : '';
+            let nextDisabled = currentPage === totalPages ? 'disabled opacity:0.5' : '';
+            pCtrl.innerHTML = `
+                <div style="color:var(--text-dim);">Showing Page <strong>${currentPage}</strong> of ${totalPages}</div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-outline icon-btn" ${prevDisabled} onclick="renderGamesList(${currentPage - 1})"><span class="material-symbols-outlined">chevron_left</span> Prev</button>
+                    <button class="btn-outline icon-btn" ${nextDisabled} onclick="renderGamesList(${currentPage + 1})">Next <span class="material-symbols-outlined">chevron_right</span></button>
+                </div>
+            `;
         }
 
+        // LEADERBOARD LOGIC
         function switchLeaderTab(tab) {
             ['leader', 'matrix'].forEach(t => document.getElementById(`tab-${t}`).classList.remove('active'));
             document.getElementById(`tab-${tab}`).classList.add('active');
@@ -770,6 +927,7 @@
             document.getElementById('matrix-table-container').innerHTML = html + `</table></div>`;
         }
 
+        // METADATA & EDITOR LOGIC
         function openCurrentGameEdit() { openMetaEdit(currentGameFile); }
         
         function openMetaEdit(filename) {
@@ -789,7 +947,8 @@
             
             document.getElementById('edit-exclude-input').checked = game.exclude_stats === 1;
             
-            // Hide Raw Editor for live.pgn
+            // Conditional Buttons
+            document.getElementById('btn-meta-archive').style.display = (filename === 'live.pgn') ? 'flex' : 'none';
             document.getElementById('btn-meta-raw').style.display = (filename === 'live.pgn') ? 'none' : 'flex';
             
             document.getElementById('edit-meta-overlay').style.display = 'flex';
@@ -814,17 +973,56 @@
             fetch('/api/game/update', { method: 'POST', body: JSON.stringify(payload) })
                 .then(() => { 
                     closeMetaEdit(); 
+                    showToast("Metadata Updated");
                     if(payload.filename === currentGameFile && payload.new_name !== currentGameFile && !IS_HOME && !IS_LEADERBOARD) {
                         loadGame(payload.new_name.endsWith('.pgn') ? payload.new_name : payload.new_name + '.pgn');
                     } else {
                         fetchState();
                         if(document.getElementById('modal-overlay').style.display === 'flex') {
-                            renderGamesList();
+                            renderGamesList(currentPage);
                         }
                     }
                 }); 
         }
+
+        function archiveLiveGame() {
+            let d = new Date();
+            let ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            let w = document.getElementById('edit-w-input').value || 'White';
+            let b = document.getElementById('edit-b-input').value || 'Black';
+            let defName = `${ds}_${w}_vs_${b}.pgn`;
+            
+            let name = window.prompt("Enter a filename for the archived game:", defName);
+            if(!name) return;
+            
+            fetch('/api/game/update', { method: 'POST', body: JSON.stringify({action:'archive_live', new_name:name}) })
+                .then(() => { 
+                    closeMetaEdit(); 
+                    showToast("Game Archived Successfully");
+                    fetchState(); 
+                    if(currentGameFile === 'live.pgn') loadGame('live.pgn');
+                });
+        }
         
+        function openAddGameModal() { document.getElementById('add-game-overlay').style.display = 'flex'; }
+        function closeAddGameModal() { document.getElementById('add-game-overlay').style.display = 'none'; }
+        
+        function submitNewGame() {
+            let filename = document.getElementById('new-game-name').value;
+            let pgn = document.getElementById('new-game-pgn').value;
+            if(!filename || !pgn) { showToast("Filename and PGN required"); return; }
+            
+            fetch('/api/game/update', { method: 'POST', body: JSON.stringify({action:'create_game', filename:filename, raw_text:pgn}) })
+                .then(() => { 
+                    closeAddGameModal(); 
+                    showToast("Game Imported Successfully!");
+                    document.getElementById('new-game-name').value = '';
+                    document.getElementById('new-game-pgn').value = '';
+                    fetchState(); 
+                    setTimeout(() => renderGamesList(1), 500); 
+                });
+        }
+
         function openRawEditorFromMeta() {
             let file = document.getElementById('edit-target-file').value;
             fetch(`/api/game/raw?file=${file}`).then(r => r.text()).then(text => {
@@ -841,35 +1039,35 @@
             fetch('/api/game/update', { method: 'POST', body: JSON.stringify({action:'save_raw', filename:file, raw_text:text}) })
                 .then(() => { 
                     closeRawEditor(); 
+                    showToast("Raw PGN Saved");
                     if(file === currentGameFile) loadGame(file); 
                     fetchState();
                 }); 
         }
 
         function apiAction(action, filename) {
-            if (action === 'delete' && !confirm(`Permanently delete ${filename}?`)) return;
+            let confirmDel = true;
+            if (action === 'delete') confirmDel = window.confirm(`Permanently delete ${filename}?`);
+            if (!confirmDel) return;
             
-            if (action === 'mark_review') {
-                let g = window.allGames.find(x => x.filename === filename);
-                if (g) g.needs_review = !g.needs_review;
-                if (document.getElementById('modal-overlay').style.display === 'flex') renderGamesList();
-            } else if (action === 'favorite') {
-                let g = window.allGames.find(x => x.filename === filename);
-                if (g) g.is_favorite = !g.is_favorite;
-                if (document.getElementById('modal-overlay').style.display === 'flex') renderGamesList();
-            } else if (action === 'toggle_exclude') {
-                let g = window.allGames.find(x => x.filename === filename);
-                if (g) g.exclude_stats = !g.exclude_stats;
-                if (document.getElementById('modal-overlay').style.display === 'flex') renderGamesList();
-            }
-
             fetch('/api/game/update', { method: 'POST', body: JSON.stringify({ action, filename }) })
-                .then(() => fetchState());
+                .then(() => {
+                    fetchState();
+                    if (action === 'delete') showToast("Game Deleted");
+                    if (action === 'mark_review') showToast("Review Status Toggled");
+                    if (action === 'favorite') showToast("Favorite Toggled");
+                    if (action === 'toggle_exclude') showToast("Visibility Toggled");
+                    
+                    if (document.getElementById('modal-overlay').style.display === 'flex') {
+                        setTimeout(() => renderGamesList(currentPage), 200);
+                    }
+                });
         }
 
         document.addEventListener('keydown', (e) => {
             if (document.getElementById('edit-meta-overlay').style.display === 'flex' || 
-                document.getElementById('raw-editor-overlay').style.display === 'flex') return;
+                document.getElementById('raw-editor-overlay').style.display === 'flex' ||
+                document.getElementById('add-game-overlay').style.display === 'flex') return;
             
             if (e.key === 'ArrowLeft') controlArrow('left');
             else if (e.key === 'ArrowRight') controlArrow('right');

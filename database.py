@@ -163,10 +163,33 @@ def update_game_action(post_data):
         c.execute("UPDATE games SET needs_review = NOT needs_review WHERE filename=?", (filename,))
     elif action == "toggle_exclude":
         c.execute("UPDATE games SET exclude_stats = NOT exclude_stats WHERE filename=?", (filename,))
+    
     elif action == "save_raw":
         path = get_actual_path(filename)
         with open(path, "w") as f: f.write(post_data.get("raw_text", ""))
-        c.execute("DELETE FROM games WHERE filename=?", (filename,)) 
+        c.execute("DELETE FROM games WHERE filename=?", (filename,))
+        conn.commit()
+        sync_pgns_to_db()
+        
+    elif action == "create_game":
+        if not filename.endswith(".pgn"): filename += ".pgn"
+        path = get_actual_path(filename)
+        with open(path, "w") as f: f.write(post_data.get("raw_text", ""))
+        conn.commit()
+        sync_pgns_to_db()
+
+    elif action == "archive_live":
+        new_name = post_data.get("new_name")
+        if not new_name.endswith(".pgn"): new_name += ".pgn"
+        try: shutil.move(get_actual_path("live.pgn"), get_actual_path(new_name))
+        except OSError: pass
+        
+        # Clear out live.pgn
+        with open(get_actual_path("live.pgn"), "w") as f: f.write("")
+        c.execute("DELETE FROM games WHERE filename='live.pgn'")
+        conn.commit()
+        sync_pgns_to_db()
+
     elif action == "favorite":
         c.execute("UPDATE games SET is_favorite = NOT is_favorite WHERE filename=?", (filename,))
     elif action == "delete":
@@ -174,5 +197,6 @@ def update_game_action(post_data):
         try: os.remove(get_actual_path(filename))
         except OSError: pass
 
-    conn.commit()
+    if action not in ["save_raw", "create_game", "archive_live"]:
+        conn.commit()
     conn.close()
