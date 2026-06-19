@@ -13,6 +13,19 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed_url = urllib.parse.urlparse(self.path)
+        # --- ADD THIS NEW BLOCK FOR CHESSCAM ---
+        if self.path.startswith('/api/game/live'):
+            pgn_string = post_data.get('pgn_string', '')
+            local_timestamp = post_data.get('local_timestamp', '')
+            
+            result = database.update_live_game(pgn_string, local_timestamp)
+            
+            self.send_response(200 if result['status'] == 'success' else 500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(result).encode('utf-8'))
+            return
+        # ----------------------------------------
         if parsed_url.path == "/api/game/update":
             content_length = int(self.headers['Content-Length'])
             post_data = json.loads(self.rfile.read(content_length).decode('utf-8'))
@@ -30,7 +43,6 @@ class ChessHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             return
 
-        database.sync_pgns_to_db() 
         query_components = urllib.parse.parse_qs(parsed_url.query)
         filename = query_components.get("file", ["live.pgn"])[0]
         pgn_path = database.get_actual_path(filename)
