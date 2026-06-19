@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChessViewer</title>
+    <title>Chezz</title>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
         :root {
@@ -27,11 +27,9 @@
         .material-symbols-outlined { vertical-align: middle; font-size: 1.2rem; }
         .filled-icon { font-variation-settings: 'FILL' 1; }
         
-        /* Custom Toast UI for Home Assistant (bypasses alert blocks) */
         #custom-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--primary); color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; font-size: 1rem; opacity: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 9999; pointer-events: none; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
         #custom-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        /* App Layouts */
         #home-view, #leaderboard-view, #app-view { display: none; width: 100%; height: 100%; }
         
         #home-view { flex-direction: column; align-items: center; justify-content: flex-start; padding: 5vmin 2vmin; overflow-y: auto; box-sizing: border-box; }
@@ -45,7 +43,6 @@
         .home-card:hover { border-color: var(--primary); transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
         .home-card .material-symbols-outlined { font-size: 3rem; color: var(--primary); margin-bottom: 10px; }
 
-        /* Live Active Pulse Animation */
         @keyframes pulse-red { 
             0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); border-color: var(--danger); }
             70% { box-shadow: 0 0 0 15px rgba(244, 67, 54, 0); border-color: var(--danger); }
@@ -57,7 +54,6 @@
         .board-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2vmin; position: relative; }
         .material-badge { background: var(--bg-card); color: var(--text-main); padding: 6px 12px; border-radius: var(--radius); font-weight: bold; margin: 5px 0; font-size: 1.1rem; display: flex; justify-content: center; width: 100%; max-width: 80vh; border: 1px solid var(--border); transition: color 0.3s; }
         
-        /* Base64 Nuclear Image Fix */
         #board-container { width: 100%; height: 100%; max-height: 75vh; max-width: 75vh; display:flex; justify-content:center; }
         #board-container img { width: 100%; height: 100%; object-fit: contain; }
         
@@ -81,6 +77,14 @@
         
         .notification-dot { position: absolute; top: -6px; right: -6px; background: var(--danger); color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.8rem; font-weight: bold; display: none; box-shadow: 0 0 10px rgba(244, 67, 54, 0.5); z-index: 5;}
 
+        /* CSS Toggle Switch */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-hover); transition: .2s; border-radius: 24px; border: 1px solid var(--border); }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: var(--text-dim); transition: .2s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); border-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); background-color: white; }
+
         #moves-container { flex: 1; padding: 15px 20px; overflow-y: auto; font-size: 1.15rem; line-height: 2.2; position: relative; }
         .turn-number { color: var(--text-dim); font-size: 0.85em; margin-right: 5px; }
         .move-span { cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background 0.15s; }
@@ -101,7 +105,6 @@
         th, td { padding: 14px; text-align: left; border-bottom: 1px solid var(--border); }
         th { background: var(--bg-hover); color: var(--text-dim); position: sticky; top: 0; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; z-index: 5; }
         
-        /* Accordion Row Styling */
         tr.main-row { cursor: pointer; transition: background 0.15s; }
         tr.main-row:hover { background: var(--bg-hover); }
         tr.excluded-game td { opacity: 0.5; text-decoration: line-through; }
@@ -111,8 +114,10 @@
         .details-grid { display: grid; grid-template-columns: 1fr 250px; gap: 20px; }
         .details-panel { background: var(--bg-card); padding: 15px; border-radius: var(--radius); border: 1px solid var(--border); }
         
-        .thumbnail-wrapper { width: 60px; height: 60px; border-radius: 8px; background: #e0c094; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
+        /* Animated Thumbnail */
+        .thumbnail-wrapper { width: 60px; height: 60px; border-radius: 8px; background: #e0c094; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.5); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .thumbnail-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+        tr.row-expanded .thumbnail-wrapper { transform: scale(1.8) translateX(15px); box-shadow: 0 10px 20px rgba(0,0,0,0.8); position: relative; z-index: 10; border: 1px solid var(--border); }
         
         .action-icons span { cursor: pointer; margin-right: 12px; transition: color 0.2s; }
         .action-icons span:hover { color: var(--primary); }
@@ -123,22 +128,17 @@
         
         #raw-pgn-textarea { width: 100%; height: 100%; background: var(--bg-hover); color: var(--text-main); font-family: monospace; border: none; padding: 15px; box-sizing: border-box; resize: none; border-radius: 8px; }
 
-        /* TV MODES */
         body.tv-mode #tv-leaderboard { display: flex; width: 280px; }
         body.tv-mode #tv-leader-content table { font-size: 0.85rem; }
         body.tv-mode #tv-leader-content th, body.tv-mode #tv-leader-content td { padding: 8px 10px; }
-        
         body.tv-mode .controls-bar { display: none !important; }
         body.tv-mode #engine-readout { display: none !important; }
         body.tv-mode .on-screen-controls { display: none !important; }
-        
         body.tv-mode #sidebar { width: 280px; }
         body.tv-mode #moves-container { font-size: 0.95rem; line-height: 1.8; padding: 10px; }
-        
         body.tv-mode .board-area { padding: 1vmin; }
         body.tv-mode #board-container { max-height: 100%; max-width: 100%; }
         body.tv-mode .material-badge { max-width: 100%; font-size: 1.1rem; padding: 4px 8px; margin: 2px 0; }
-
         body.tv-board-mode #tv-leaderboard { display: none !important; }
         body.tv-board-mode #sidebar { display: none !important; }
         body.tv-board-mode .on-screen-controls { display: none !important; }
@@ -150,12 +150,10 @@
             #app-view { flex-direction: column; } 
             #eval-container { display: none !important; }
             #sidebar { display: contents; }
-            
             .controls-bar { order: -1; border-bottom: 1px solid var(--border); border-top: none; }
             .board-area { order: 0; min-height: 50vh; }
             #engine-readout { order: 1; border-top: 1px solid var(--border); }
             #moves-container { order: 2; max-height: 40vh; border-top: 1px solid var(--border); }
-            
             .home-grid { grid-template-columns: 1fr; }
             .tv-grid { grid-template-columns: 1fr; }
         }
@@ -166,16 +164,16 @@
     <div id="custom-toast">Action Completed</div>
 
     <div id="home-view">
-        <span class="material-symbols-outlined" style="font-size: 5rem; color: var(--primary);">chess</span>
-        <h1 style="margin-top: 10px; letter-spacing: 2px;">CHESSVIEWER</h1>
+        <img src="/gusbotPFP.svg" alt="Chezz Logo" style="width: 100px; height: 100px; border-radius: 50%; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+        <h1 style="margin-top: 10px; letter-spacing: 2px;">CHEZZ</h1>
         <div class="home-grid">
             <div id="home-card-live" class="home-card" onclick="window.location.href='/live'">
                 <span class="material-symbols-outlined">sensors</span>
                 <h3>Live Stream</h3>
             </div>
-            <div class="home-card" onclick="window.location.href='/analysis'">
+            <div class="home-card" onclick="openManager(true)">
                 <span class="material-symbols-outlined">troubleshoot</span>
-                <h3>Analysis Engine</h3>
+                <h3>Analyze Board</h3>
             </div>
             <div class="home-card" onclick="window.location.href='/leaderboard'">
                 <span class="material-symbols-outlined">social_leaderboard</span>
@@ -229,8 +227,7 @@
 
         <div class="board-area">
             <div id="mat-top" class="material-badge"></div>
-            <div id="board-container">
-                </div>
+            <div id="board-container"></div>
             <div class="on-screen-controls">
                 <button onclick="controlArrow('first')"><span class="material-symbols-outlined">keyboard_double_arrow_left</span></button>
                 <button onclick="controlArrow('left')"><span class="material-symbols-outlined">chevron_left</span></button>
@@ -261,16 +258,21 @@
                     </button>
                 </div>
                 
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 5px; gap: 10px;">
-                    <div style="flex:1; overflow:hidden;">
-                        <div id="current-game-label" style="color:var(--primary); font-weight:bold; font-size:0.9rem; text-overflow:ellipsis; white-space:nowrap;"></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 5px; gap: 10px; padding: 10px; background: #222; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="flex:1; overflow:hidden;" id="current-game-label">
+                        </div>
+                    <div style="display:flex; flex-direction:column; gap:5px;">
+                        <button class="btn-outline icon-btn" onclick="copyToClipboard(currentGameFile)" title="Share Game" style="padding: 5px;"><span class="material-symbols-outlined">share</span></button>
+                        <button class="btn-outline icon-btn" onclick="openCurrentGameEdit()" title="Edit Metadata" style="padding: 5px;"><span class="material-symbols-outlined">edit</span></button>
                     </div>
-                    <button class="btn-outline icon-btn" onclick="copyToClipboard(currentGameFile)" title="Share Game"><span class="material-symbols-outlined">share</span></button>
-                    <button class="btn-outline icon-btn" onclick="openCurrentGameEdit()" title="Edit Metadata"><span class="material-symbols-outlined">edit</span></button>
                 </div>
                 
-                <div style="display:flex; gap: 8px;">
-                    <button id="mode-toggle-btn" class="btn-outline icon-btn" style="flex:1; width: 100%;"></button>
+                <div style="display:flex; align-items: center; justify-content: space-between; padding: 5px 10px; background: var(--bg-hover); border-radius: 8px;">
+                    <span style="font-weight:bold; font-size:0.9rem; color:var(--text-dim);">Analysis Mode</span>
+                    <label class="switch">
+                        <input type="checkbox" id="analysis-toggle" onchange="toggleAnalysisMode()">
+                        <span class="slider"></span>
+                    </label>
                 </div>
                 <button id="deep-analyze-btn" class="icon-btn" style="display:none; background:var(--success); color:white;" onclick="runFullAnalysis()"><span class="material-symbols-outlined">search</span> Analyze Blunders</button>
             </div>
@@ -295,8 +297,7 @@
             </div>
             <div class="modal-body" style="padding: 0; display:flex; flex-direction:column;">
                 <div style="flex:1; overflow-y:auto;" id="modal-body-content"></div>
-                <div id="pagination-controls" style="padding: 15px; background:var(--bg-card); border-top: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                    </div>
+                <div id="pagination-controls" style="padding: 15px; background:var(--bg-card); border-top: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center;"></div>
             </div>
         </div>
     </div>
@@ -364,9 +365,14 @@
             <button id="btn-meta-archive" type="button" class="btn-success icon-btn" style="width: 100%; margin-bottom: 10px; display:none;" onclick="archiveLiveGame()">
                 <span class="material-symbols-outlined">inventory</span> Save & Archive Live Game
             </button>
-            <button id="btn-meta-raw" type="button" class="btn-outline icon-btn" style="width: 100%; margin-bottom: 15px;" onclick="openRawEditorFromMeta()">
-                <span class="material-symbols-outlined">code</span> View / Edit Raw PGN
-            </button>
+            <div style="display:flex; gap:10px; margin-bottom: 15px;" id="btn-meta-actions">
+                <button type="button" class="btn-outline icon-btn" style="flex:1;" onclick="openRawEditorFromMeta()">
+                    <span class="material-symbols-outlined">code</span> View Raw
+                </button>
+                <button type="button" class="btn-outline icon-btn" style="flex:1;" onclick="exportPGNFile()">
+                    <span class="material-symbols-outlined">download</span> Export PGN
+                </button>
+            </div>
 
             <div style="display:flex; gap:10px;">
                 <button class="btn-primary icon-btn" style="flex:1;" onclick="submitMetaEdit()"><span class="material-symbols-outlined">save</span> Save</button>
@@ -404,6 +410,8 @@
         let currentPage = 1;
         const GAMES_PER_PAGE = 7;
         
+        let isAnalysisMode = false;
+        
         if (IS_HOME) {
             document.getElementById('home-view').style.display = 'flex';
         } else if (IS_LEADERBOARD) {
@@ -428,15 +436,23 @@
             setTimeout(() => t.classList.remove('show'), 3000);
         }
 
-        if (!IS_HOME && !IS_LEADERBOARD) {
-            let toggleBtn = document.getElementById('mode-toggle-btn');
-            toggleBtn.innerHTML = IS_ANALYSIS ? '<span class="material-symbols-outlined">sensors</span> Live Mode' : '<span class="material-symbols-outlined">troubleshoot</span> Analysis Mode';
-            toggleBtn.onclick = () => window.location.href = IS_ANALYSIS ? `/live?file=${currentGameFile}` : `/analysis?file=${currentGameFile}`;
+        // Toggle Switch Logic
+        function toggleAnalysisMode() {
+            isAnalysisMode = document.getElementById('analysis-toggle').checked;
             
-            if (IS_ANALYSIS && !IS_TV && !IS_TV_BOARD) {
+            if (isAnalysisMode && !IS_TV && !IS_TV_BOARD) {
                 document.getElementById('eval-container').style.display = 'flex';
                 document.getElementById('engine-readout').style.display = 'block';
                 document.getElementById('deep-analyze-btn').style.display = 'flex';
+                let ply = currentViewPly === -1 ? totalPlies : currentViewPly;
+                let m = lastMovesData.find(x => x.ply === ply);
+                if(m) analyzePosition(m.fen, m.ply);
+            } else {
+                document.getElementById('eval-container').style.display = 'none';
+                document.getElementById('engine-readout').style.display = 'none';
+                document.getElementById('deep-analyze-btn').style.display = 'none';
+                currentBestMove = null;
+                updateBoard();
             }
         }
 
@@ -445,18 +461,15 @@
             let parts = dateStr.split(' ');
             if (parts.length < 2) return dateStr;
             let dPart = parts[0], tPart = parts[1];
-            
             let dSplit = dPart.split('-');
             if(dSplit.length !== 3) return dateStr;
             let [y, m, d] = dSplit;
-            
             let tSplit = tPart.split(':');
             let hr = parseInt(tSplit[0], 10);
             let min = tSplit[1];
             let ampm = hr >= 12 ? 'PM' : 'AM';
             hr = hr % 12;
             if (hr === 0) hr = 12;
-            
             return `${m}-${d}-${y} ${hr}:${min} ${ampm}`;
         }
 
@@ -472,21 +485,20 @@
 
         function loadGame(filename) {
             currentGameFile = filename;
-            if (!IS_TV && !IS_TV_BOARD && !IS_HOME && !IS_LEADERBOARD) history.pushState(null, '', `?file=${filename}`); 
+            // Strict routing
+            let path = filename === 'live.pgn' ? '/live' : '/analysis';
+            if (!IS_TV && !IS_TV_BOARD && !IS_HOME && !IS_LEADERBOARD) history.pushState(null, '', `${path}?file=${filename}`); 
             totalPlies = 0; currentViewPly = -1; currentBestMove = null; evalCache = {};
             closeManager(); updateBoard(); fetchState();
         }
 
         function viewPly(ply) {
             currentViewPly = ply; currentBestMove = null;
-            
-            // Manage "Resume Live" button visibility
             if(!IS_HOME && !IS_LEADERBOARD && !IS_TV && !IS_TV_BOARD) {
-                document.getElementById('resume-live-btn').style.display = (IS_LIVE && ply !== -1) ? 'flex' : 'none';
+                document.getElementById('resume-live-btn').style.display = (currentGameFile === 'live.pgn' && ply !== -1) ? 'flex' : 'none';
             }
-
             updateBoard(); renderMovesList(); renderMaterial();
-            if (IS_ANALYSIS && !IS_TV && !IS_TV_BOARD) {
+            if (isAnalysisMode && !IS_TV && !IS_TV_BOARD) {
                 let moveObj = lastMovesData.find(m => m.ply === ply);
                 if (moveObj) analyzePosition(moveObj.fen, moveObj.ply);
             }
@@ -495,23 +507,20 @@
         function updateBoard() {
             if (IS_HOME || IS_LEADERBOARD) return;
             const target = (currentViewPly === -1) ? '' : `&ply=${currentViewPly}`;
-            const bm = (IS_ANALYSIS && currentBestMove) ? `&bestmove=${encodeURIComponent(currentBestMove)}` : '';
+            const bm = (isAnalysisMode && currentBestMove) ? `&bestmove=${encodeURIComponent(currentBestMove)}` : '';
             const svgUrl = `/board.svg?file=${currentGameFile}${target}&flipped=${isFlipped}${bm}&t=${Date.now()}`;
             
-            // Nuclear SVG-to-Base64 Image Injection (Destroys WebView Shadow DOM bugs)
-            fetch(svgUrl)
-                .then(r => r.text())
-                .then(svgText => {
-                    const b64 = btoa(unescape(encodeURIComponent(svgText)));
-                    let img = document.getElementById('board-img');
-                    if (!img) {
-                        img = document.createElement('img');
-                        img.id = 'board-img';
-                        document.getElementById('board-container').innerHTML = ''; 
-                        document.getElementById('board-container').appendChild(img);
-                    }
-                    img.src = `data:image/svg+xml;base64,${b64}`;
-                });
+            fetch(svgUrl).then(r => r.text()).then(svgText => {
+                const b64 = btoa(unescape(encodeURIComponent(svgText)));
+                let img = document.getElementById('board-img');
+                if (!img) {
+                    img = document.createElement('img');
+                    img.id = 'board-img';
+                    document.getElementById('board-container').innerHTML = ''; 
+                    document.getElementById('board-container').appendChild(img);
+                }
+                img.src = `data:image/svg+xml;base64,${b64}`;
+            });
         }
 
         function updateH2HHeader() {
@@ -535,11 +544,16 @@
                 }
             });
             
-            let headerText = `${wName} vs ${bName} (W: ${wWins} - B: ${bWins} - D: ${draws})`;
+            let html = '';
             if(currentGameFile === 'live.pgn' && wName === 'Unknown' && bName === 'Unknown') {
-                headerText = "Live Stream (Awaiting Player Assignment)";
+                html = `<div style="color:var(--primary); font-weight:bold;">Live Stream</div><div style="font-size:0.8em; color:var(--text-dim);">Awaiting Players</div>`;
+            } else {
+                // Stacked View per requirement
+                html = `<div style="color:white; font-weight:bold; margin-bottom:3px;"><span style="color:var(--text-dim); margin-right:5px; display:inline-block; width:15px;">W</span> ${wName} <span style="float:right; color:var(--success);">${wWins}</span></div>
+                        <div style="color:white; font-weight:bold;"><span style="color:var(--text-dim); margin-right:5px; display:inline-block; width:15px;">B</span> ${bName} <span style="float:right; color:var(--danger);">${bWins}</span></div>
+                        <div style="font-size: 0.75rem; color:var(--text-dim); text-align:right; margin-top:2px;">Draws: ${draws}</div>`;
             }
-            document.getElementById('current-game-label').innerText = headerText;
+            document.getElementById('current-game-label').innerHTML = html;
         }
 
         function getDiffColor(absDiff) {
@@ -583,11 +597,9 @@
             for(let i = 1; i < lastMovesData.length; i += 2) {
                 let turn = Math.floor(i / 2) + 1, white = lastMovesData[i], black = lastMovesData[i+1];
                 html += `<div><span class="turn-number">${turn}.</span>`;
-                
                 let wErr = evalCache[white.ply]?.isBlunder ? 'blunder' : '';
                 let wClass = (white.ply === activePly) ? 'move-active' : wErr;
                 html += `<span class="move-span ${wClass}" onclick="viewPly(${white.ply})">${white.san}</span> `;
-                
                 if (black) {
                     let bErr = evalCache[black.ply]?.isBlunder ? 'blunder' : '';
                     let bClass = (black.ply === activePly) ? 'move-active' : bErr;
@@ -605,12 +617,9 @@
             .then(r => r.json()).then(data => {
                 let score = data.mate ? (data.mate > 0 ? 10 : -10) : (data.eval / 100);
                 if(ply !== undefined) evalCache[ply] = { score: score, isBlunder: false };
-                
                 document.getElementById('engine-eval').innerText = data.mate ? `M${data.mate}` : (score > 0 ? `+${score.toFixed(2)}` : score.toFixed(2));
                 document.getElementById('engine-best').innerText = data.san;
-                
                 currentBestMove = data.san; updateBoard();
-                
                 let pct = Math.max(0, Math.min(100, 50 + (score * 10)));
                 let fill = document.getElementById('eval-fill'), container = document.getElementById('eval-container');
                 if (isFlipped) { fill.style.height = `${100 - pct}%`; fill.style.background = 'var(--bg-card)'; container.style.background = '#f0d9b5'; } 
@@ -652,7 +661,7 @@
                                 updateBoard(); renderMovesList(); renderMaterial();
                                 if(!IS_TV && !IS_TV_BOARD) {
                                     const c = document.getElementById('moves-container'); c.scrollTop = c.scrollHeight;
-                                    if (IS_ANALYSIS && lastMovesData.length > 0) analyzePosition(lastMovesData[lastMovesData.length - 1].fen, lastMovesData[lastMovesData.length - 1].ply);
+                                    if (isAnalysisMode && lastMovesData.length > 0) analyzePosition(lastMovesData[lastMovesData.length - 1].fen, lastMovesData[lastMovesData.length - 1].ply);
                                 }
                             } else renderMovesList();
                         }
@@ -712,26 +721,28 @@
         }
         
         function copyToClipboard(filename) {
-            let url = window.location.origin + '/analysis?file=' + encodeURIComponent(filename);
+            let path = filename === 'live.pgn' ? '/live' : '/analysis';
+            let url = window.location.origin + path + '?file=' + encodeURIComponent(filename);
             navigator.clipboard.writeText(url).then(() => {
                 showToast("Share Link Copied!");
-            }).catch(err => {
-                console.error("Failed to copy link: ", err);
-            });
+            }).catch(err => console.error(err));
         }
         
         function toggleRow(id) {
             let el = document.getElementById(`details-${id}`);
             let icon = document.getElementById(`expand-icon-${id}`);
+            let row = document.getElementById(`row-${id}`);
             if (el.style.display === 'table-row') {
                 el.style.display = 'none';
                 icon.innerText = 'expand_more';
+                row.classList.remove('row-expanded');
             } else {
-                // Close others
                 document.querySelectorAll('.expanded-details').forEach(d => d.style.display = 'none');
                 document.querySelectorAll('.expand-chevron').forEach(i => i.innerText = 'expand_more');
+                document.querySelectorAll('.main-row').forEach(r => r.classList.remove('row-expanded'));
                 el.style.display = 'table-row';
                 icon.innerText = 'expand_less';
+                row.classList.add('row-expanded'); // Triggers the animated CSS zoom
             }
         }
 
@@ -746,7 +757,6 @@
             
             let html = `<table><tr><th style="width:20px;"></th><th>Board</th><th>Date Played</th><th>Players (W vs B)</th><th>Result</th><th>Moves</th><th>Actions</th></tr>`;
             
-            // Generate Row Function
             const buildRow = (g, isLiveTop = false) => {
                 let safeId = g.filename.replace(/[^a-zA-Z0-9]/g, '');
                 let fav = g.is_favorite ? '<span class="material-symbols-outlined filled-icon" style="color:var(--warning)">star</span>' : '<span class="material-symbols-outlined">star</span>';
@@ -762,7 +772,6 @@
                 let cleanW = g.white.replace(/-1$/, '');
                 let cleanB = g.black.replace(/-1$/, '');
                 
-                // Formatted Player Win Result (Replaced Flags Column)
                 let resDisplay = g.result;
                 if (g.result === '1-0') {
                     resDisplay = `<span style="color:var(--success); font-weight:bold;">${cleanW} won</span> by ${g.is_checkmate ? 'Checkmate <span class="material-symbols-outlined" style="font-size:1.1em; vertical-align:middle;">tag</span>' : 'Resignation <span class="material-symbols-outlined" style="color:var(--warning); font-size:1.1em; vertical-align:middle;">flag_circle</span>'}`;
@@ -775,15 +784,20 @@
                 }
                 
                 let rowStyle = '';
-                let liveActionColor = 'var(--text-dim)';
+                let playIcon = 'troubleshoot'; // Default for archives (Analysis)
+                let playColor = 'var(--primary)';
+                
                 if (isLiveTop) {
                     rowStyle = 'border: 2px solid var(--danger); box-shadow: 0 0 15px rgba(244, 67, 54, 0.2);';
-                    liveActionColor = 'var(--danger)';
+                    playIcon = 'sensors';
+                    playColor = 'var(--danger)';
                 } else if (g.needs_review) {
                     rowStyle = 'background: rgba(244, 67, 54, 0.1);';
                 }
                 
-                let out = `<tr class="${trClass}" style="${rowStyle}" onclick="toggleRow('${safeId}')">
+                let targetPath = isLiveTop ? '/live' : '/analysis';
+                
+                let out = `<tr id="row-${safeId}" class="${trClass}" style="${rowStyle}" onclick="toggleRow('${safeId}')">
                     <td style="color:var(--primary);"><span id="expand-icon-${safeId}" class="material-symbols-outlined expand-chevron">expand_more</span></td>
                     <td><div class="thumbnail-wrapper"><img src="/board.svg?file=${g.filename}"></div></td>
                     <td style="color:var(--text-dim);">${formattedDate}</td>
@@ -791,7 +805,7 @@
                     <td>${resDisplay}</td>
                     <td>${moves}</td>
                     <td class="action-icons" style="text-decoration: none; opacity: 1;" onclick="event.stopPropagation();">
-                        <span onclick="window.location.href='/live?file=${g.filename}'" title="Live Stream View" class="material-symbols-outlined" style="color:${liveActionColor}">sensors</span>
+                        <span onclick="window.location.href='${targetPath}?file=${g.filename}'" title="View Game" class="material-symbols-outlined" style="color:${playColor}">${playIcon}</span>
                         <span onclick="openMetaEdit('${g.filename}')" title="Edit Metadata" class="material-symbols-outlined">edit</span>
                         <span onclick="copyToClipboard('${g.filename}')" title="Share Game" class="material-symbols-outlined">share</span>
                         <span onclick="apiAction('favorite', '${g.filename}')" title="Favorite">${fav}</span>
@@ -821,7 +835,6 @@
             
             document.getElementById('modal-body-content').innerHTML = html + "</table>";
             
-            // Render Pagination
             let pCtrl = document.getElementById('pagination-controls');
             let prevDisabled = currentPage === 1 ? 'disabled opacity:0.5' : '';
             let nextDisabled = currentPage === totalPages ? 'disabled opacity:0.5' : '';
@@ -834,7 +847,7 @@
             `;
         }
 
-        // LEADERBOARD LOGIC
+        // Leaderboard Elo Logic
         function switchLeaderTab(tab) {
             ['leader', 'matrix'].forEach(t => document.getElementById(`tab-${t}`).classList.remove('active'));
             document.getElementById(`tab-${tab}`).classList.add('active');
@@ -861,7 +874,14 @@
             const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
             let stats = {};
             
-            window.allGames.forEach(g => {
+            // Re-sort games chronologically for proper Elo calculation
+            let chronoGames = [...window.allGames].sort((a,b) => {
+                let dA = new Date(a.date_played.replace(/\./g, '-'));
+                let dB = new Date(b.date_played.replace(/\./g, '-'));
+                return dA - dB;
+            });
+            
+            chronoGames.forEach(g => {
                 if (g.is_empty || g.result === '*' || g.exclude_stats) return;
                 let date = new Date(g.date_played.replace(/\./g, '-'));
                 if (days < 9999 && date < cutoff) return;
@@ -869,17 +889,43 @@
                 let cleanW = g.white.replace(/-1$/, '');
                 let cleanB = g.black.replace(/-1$/, '');
                 
-                if(!stats[cleanW]) stats[cleanW] = {pts:0, w:0, l:0, d:0};
-                if(!stats[cleanB]) stats[cleanB] = {pts:0, w:0, l:0, d:0};
+                if(!stats[cleanW]) stats[cleanW] = {pts:0, w:0, l:0, d:0, elo: 1200};
+                if(!stats[cleanB]) stats[cleanB] = {pts:0, w:0, l:0, d:0, elo: 1200};
                 
-                if (g.result === '1-0') { stats[cleanW].pts += 1; stats[cleanW].w += 1; stats[cleanB].l += 1; } 
-                else if (g.result === '0-1') { stats[cleanB].pts += 1; stats[cleanB].w += 1; stats[cleanW].l += 1; } 
-                else if (g.result === '1/2-1/2') { stats[cleanW].pts += 0.5; stats[cleanW].d += 1; stats[cleanB].pts += 0.5; stats[cleanB].d += 1; }
+                // Calculate ELO Delta
+                let Ra = stats[cleanW].elo;
+                let Rb = stats[cleanB].elo;
+                let Ea = 1 / (1 + Math.pow(10, (Rb - Ra) / 400));
+                let Eb = 1 / (1 + Math.pow(10, (Ra - Rb) / 400));
+                let Sa = 0, Sb = 0;
+                
+                if (g.result === '1-0') { stats[cleanW].pts += 1; stats[cleanW].w += 1; stats[cleanB].l += 1; Sa = 1; Sb = 0; } 
+                else if (g.result === '0-1') { stats[cleanB].pts += 1; stats[cleanB].w += 1; stats[cleanW].l += 1; Sa = 0; Sb = 1; } 
+                else if (g.result === '1/2-1/2') { stats[cleanW].pts += 0.5; stats[cleanW].d += 1; stats[cleanB].pts += 0.5; stats[cleanB].d += 1; Sa = 0.5; Sb = 0.5; }
+                
+                stats[cleanW].elo = Math.round(Ra + 32 * (Sa - Ea));
+                stats[cleanB].elo = Math.round(Rb + 32 * (Sb - Eb));
             });
 
-            let sorted = Object.keys(stats).map(p => ({name: p, ...stats[p]})).sort((a,b) => b.pts - a.pts);
-            let html = `<table><tr><th>Rank</th><th>Player</th><th>Pts</th><th>W-L-D</th></tr>`;
-            sorted.forEach((p, i) => { html += `<tr><td>#${i+1}</td><td style="font-weight:bold;">${p.name}</td><td style="color:var(--warning); font-weight:bold;">${p.pts}</td><td><span style="color:var(--success)">${p.w}</span>-<span style="color:var(--danger)">${p.l}</span>-<span style="color:var(--text-dim)">${p.d}</span></td></tr>`; });
+            // Sort by Points, then by Elo
+            let sorted = Object.keys(stats).map(p => ({
+                name: p, 
+                total: stats[p].w + stats[p].l + stats[p].d,
+                ...stats[p]
+            })).sort((a,b) => b.pts - a.pts || b.elo - a.elo);
+            
+            let html = `<table><tr><th>Rank</th><th>Player</th><th>Elo Rating</th><th>Win %</th><th>Pts</th><th>W-L-D</th></tr>`;
+            sorted.forEach((p, i) => { 
+                let winPct = p.total > 0 ? Math.round((p.w / p.total) * 100) : 0;
+                html += `<tr>
+                    <td>#${i+1}</td>
+                    <td style="font-weight:bold;">${p.name}</td>
+                    <td style="color:var(--primary); font-weight:bold; font-size:1.1em;">${p.elo}</td>
+                    <td>${winPct}%</td>
+                    <td style="color:var(--warning); font-weight:bold;">${p.pts}</td>
+                    <td><span style="color:var(--success)">${p.w}</span>-<span style="color:var(--danger)">${p.l}</span>-<span style="color:var(--text-dim)">${p.d}</span></td>
+                </tr>`; 
+            });
             return html + "</table>";
         }
 
@@ -947,14 +993,25 @@
             
             document.getElementById('edit-exclude-input').checked = game.exclude_stats === 1;
             
-            // Conditional Buttons
             document.getElementById('btn-meta-archive').style.display = (filename === 'live.pgn') ? 'flex' : 'none';
-            document.getElementById('btn-meta-raw').style.display = (filename === 'live.pgn') ? 'none' : 'flex';
+            document.getElementById('btn-meta-actions').style.display = (filename === 'live.pgn') ? 'none' : 'flex';
             
             document.getElementById('edit-meta-overlay').style.display = 'flex';
         }
         function closeMetaEdit() { document.getElementById('edit-meta-overlay').style.display = 'none'; }
         
+        function exportPGNFile() {
+            let file = document.getElementById('edit-target-file').value;
+            fetch(`/api/game/raw?file=${file}`).then(r => r.text()).then(text => {
+                let blob = new Blob([text], { type: 'text/plain' });
+                let a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = file;
+                a.click();
+                showToast("PGN Downloaded");
+            });
+        }
+
         function submitMetaEdit() {
             let dtRaw = document.getElementById('edit-date-input').value;
             let payload = {
