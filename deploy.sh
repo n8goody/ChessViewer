@@ -17,6 +17,6 @@ docker build -t n8goody/chessviewer:$VERSION -t n8goody/chessviewer:latest .
 
 # Push both tags
 docker push n8goody/chessviewer:$VERSION
-docker push n8goody/chessviewer:latest
+docker push n8goody/chessviewer:dev-nate
 
 echo "Deployment Complete for $VERSION!"
