@@ -13,7 +13,7 @@ fi
 echo "Building and pushing version: $VERSION..."
 
 # Build with both tags
-docker build -t n8goody/chessviewer:$VERSION -t n8goody/chessviewer:latest .
+docker build -t n8goody/chessviewer:$VERSION -t n8goody/chessviewer:dev-nate .
 
 # Push both tags
 docker push n8goody/chessviewer:$VERSION
